@@ -13,6 +13,11 @@ struct img_res{
     int height;
 };
 
+struct img_ctrl{
+    uint32_t id;
+    char name[64];
+};
+
 void query_capablities(int fd);
 
 int enum_formats(int fd, struct pix_formats *available);

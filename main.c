@@ -24,6 +24,22 @@ int main(int argc,char * argv[]){
     int input;
     query_capablities(fd);
 
+    //control query
+    struct img_ctrl ctrls;
+    int ctrl_count=enum_cntrl(fd,ctrls);
+    if(ctrl_count==0){
+        printf("No available controls");
+    }
+    else{
+        //control choice
+        printf("Do you want to change any controls?:")
+        printf("[-1]No\nInput:");
+        scanf("%d",&input);
+        if(input!=-1){
+            set_ctrl(fd,ctrls,val);
+        }
+    }
+
     //format query
     struct pix_formats available[16]={0};
     int fmt_count=enum_formats(fd,available);
@@ -50,7 +66,7 @@ int main(int argc,char * argv[]){
         return 0;
     }
 
-    //format choice
+    //resolution choice
     printf("[-1]Exit\nInput:");
     scanf("%d",&input);
     if(input==-1) return 0;

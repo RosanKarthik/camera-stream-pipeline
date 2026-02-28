@@ -25,21 +25,25 @@ int main(int argc,char * argv[]){
     query_capablities(fd);
 
     //control query
-    struct img_ctrl ctrls[20];
-    int ctrl_count=enum_cntrl(fd,ctrls);
-    if(ctrl_count==0){
-        printf("No available controls");
-    }
-    else{
-        //control choice
-        printf("[0]No\nEnter the control number to change:\nInput:");
-        scanf("%d",&input);
+    printf("Do you want to change any controls?:\n[0]No [1]Yes: ");
+    scanf("%d",&input);
         if(input){
-            int32_t val;
-            uint32_t ctrl_id=ctrls[input].id;
-            printf("Enter the value to set: ");
-            scanf("%d",&val);
-            set_ctrl(fd,ctrl_id,val);
+            struct img_ctrl ctrls[20];
+        int ctrl_count=enum_cntrl(fd,ctrls);
+        if(ctrl_count==0){
+            printf("No available controls");
+        }
+        else{
+            //control choice
+            printf("[0]No\nEnter the control number to change:\nInput:");
+            scanf("%d",&input);
+            if(input){
+                int32_t val;
+                uint32_t ctrl_id=ctrls[input].id;
+                printf("Enter the value to set: ");
+                scanf("%d",&val);
+                set_ctrl(fd,ctrl_id,val);
+            }
         }
     }
 

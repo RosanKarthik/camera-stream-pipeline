@@ -24,6 +24,29 @@ int main(int argc,char * argv[]){
     int input;
     query_capablities(fd);
 
+    //control query
+    printf("Do you want to change any controls?:\n[0]No [1]Yes: ");
+    scanf("%d",&input);
+        if(input){
+            struct img_ctrl ctrls[20];
+        int ctrl_count=enum_cntrl(fd,ctrls);
+        if(ctrl_count==0){
+            printf("No available controls");
+        }
+        else{
+            //control choice
+            printf("[0]No\nEnter the control number to change:\nInput:");
+            scanf("%d",&input);
+            if(input){
+                int32_t val;
+                uint32_t ctrl_id=ctrls[input].id;
+                printf("Enter the value to set: ");
+                scanf("%d",&val);
+                set_ctrl(fd,ctrl_id,val);
+            }
+        }
+    }
+
     //format query
     struct pix_formats available[16]={0};
     int fmt_count=enum_formats(fd,available);
@@ -37,7 +60,7 @@ int main(int argc,char * argv[]){
     //format choice
     printf("[-1]Exit\nInput:");
     scanf("%d",&input);
-    if(input==-1) return 0;
+    if(input==-1) return 0; 
 
     fmt_id=available[input].id;
     strncpy(fmt_name,available[input].format,16);
@@ -50,7 +73,7 @@ int main(int argc,char * argv[]){
         return 0;
     }
 
-    //format choice
+    //resolution choice
     printf("[-1]Exit\nInput:");
     scanf("%d",&input);
     if(input==-1) return 0;

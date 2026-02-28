@@ -84,12 +84,18 @@ int enum_resolution(int fd,struct img_res * res, int format){
 }
 
 int enum_cntrl(int fd,struct img_ctrl * available){
-    int count=-1;
+    int count=0;
     //TODO modify the logic to selection based instead of listing
     struct v4l2_queryctrl ctrl={0};
     ctrl.id=V4L2_CTRL_FLAG_NEXT_CTRL;
     printf("Available controls:\n");
     while(ioctl(fd,VIDIOC_QUERYCTRL,&ctrl)!=-1){
+        if(ctrl.flags&V4L2_CTRL_FLAG_DISABLED){
+            printf("Control flag disabled for %s. Skipping..\n",ctrl.name);
+            ctrl.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
+            // count++;
+            continue;
+        }
         printf("[%d]%s\n",count,ctrl.name);
         if(ctrl.type==V4L2_CTRL_TYPE_MENU){
             struct  v4l2_querymenu menu={0};
@@ -104,7 +110,7 @@ int enum_cntrl(int fd,struct img_ctrl * available){
         else{
             printf("\tMin:%d Max:%d Step:%d Def:%d\n",ctrl.minimum,ctrl.maximum,ctrl.step,ctrl.default_value);
         }
-        available[count].id=ctrl.type;
+        available[count].id=ctrl.id;
         strncpy(available[count].name,(char *)ctrl.name,sizeof(ctrl.name));
         ctrl.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
         count++;
@@ -112,9 +118,19 @@ int enum_cntrl(int fd,struct img_ctrl * available){
     return count;
 }
 
-int set_cntrl(int fd){
-    
-}
+int set_ctrl(int fd,uint32_t ctrl_id,int32_t val){
+    struct v4l2_control vctrls; 
+    vctrls.id=ctrl_id;
+    printf("%d\n",vctrls.id);
+    vctrls.value=val;
+    if(ioctl(fd,VIDIOC_S_CTRL,&vctrls)==-1){
+        printf("Eror setting controls\n");
+        return -1;
+    }
+    printf("Successfully set cntrl to %d \n",vctrls.value);
+    return 0;
+}   
+
 /*
 func name:  set_formats
 args:
@@ -271,7 +287,7 @@ int v4l2_main(){
 
     query_capablities(fd);
     
-    enum_cntrl(fd);
+    // enum_cntrl(fd);
     
     int input;
 

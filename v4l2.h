@@ -24,7 +24,9 @@ int enum_formats(int fd, struct pix_formats *available);
 
 int enum_resolution(int fd, struct img_res *res, int format);
 
-int enum_cntrl(int fd);
+int enum_cntrl(int fd,struct img_ctrl * available);\
+
+int set_ctrl(int fd, uint32_t ctrl_id,int32_t val);
 
 void set_formats(int fd, int width, int height, int pixformat);
 

@@ -131,6 +131,18 @@ int set_ctrl(int fd,uint32_t ctrl_id,int32_t val){
     return 0;
 }   
 
+int get_ctrl(int fd,uint32_t ctrl_id){
+    struct v4l2_control vctrls;
+    vctrls.id=ctrl_id;
+    printf("%d\n",vctrls.id);
+    if(ioctl(fd,VIDIOC_G_CTRL,&vctrls)==-1){
+        printf("Error getting control val\n");
+        return -1;
+    }
+    printf("The value of the selected control is : %d\n",vctrls.value);
+    return 0;
+}
+
 /*
 func name:  set_formats
 args:

@@ -15,31 +15,36 @@
 #include "thread.h"
 
 int main(int argc,char * argv[]){
+    unsigned char *buff[3];
+    int fd = open("/dev/video0", O_RDWR);
+    int buff_size;
+    int index;
+    int num_buffs;
+    int input;
+    int ctrl_count=0;
+
+    struct pix_formats available[16]={0};
+    struct img_res res[16]={0};
+    struct img_ctrl ctrls[20]={0};
+    struct CustomData data={0};
+    pthread_t g_pipeline;
+    struct StreamState state;
+
     while(1){
-        unsigned char *buff[3];
-        int fd = open("/dev/video0", O_RDWR);
-        int buff_size;
-        int index;
-        int num_buffs;
-        int input;
-
-        struct pix_formats available[16]={0};
-        struct img_res res[16]={0};
-        struct img_ctrl ctrls[20];
-        struct StreamState state;
-
-        query_capablities(fd); 
-
-        int ctrl_count=enum_cntrl(fd,ctrls);
-        if(ctrl_count==0){
-            printf("No available controls");
-        }
-
-        printf("[1]Start Streaming\t[2]Take a snap\n[3]Get/Set Controls\t[4]Stop Streaming\n[0]Quit\n");
+        query_capablities(fd);  
+        printf("-----------------------------------------------------------------------------\n");
+        printf("[1]Start Streaming\t[2]Query Controls\t[3]Get/Set Controls\n[4]Stop Streaming\t[5]Take a Snap\t\t[0]Quit\n");
+        printf("-----------------------------------------------------------------------------\n");
+        printf("Choice: ");
         scanf("%d",&input);
+        printf("-----------------------------------------------------------------------------\n");
         switch(input){
-            case 1: 
+            case 1:
                 //format query
+                if(state.is_streaming){
+                    printf("Stream is already on...\nPlease turn off if you want to change formats/resolution.\n");
+                    continue;
+                }
                 int fmt_count=enum_formats(fd,available);
                 char fmt_name[16];
                 int fmt_id;
@@ -89,12 +94,8 @@ int main(int argc,char * argv[]){
                 start_streaming(fd);
 
                 //gstream pipeline start
-                struct CustomData data={0};
+
                 gst_init(&argc, &argv);
-                
-                // if(!gstream_init(&data)){
-                //     printf("Gstream pipeline initialized\n");
-                // }
 
                 if(gstream_setup(&data,fmt_id,width,height)){
                     printf("Gstream setup success\n");
@@ -105,14 +106,20 @@ int main(int argc,char * argv[]){
                 state.g_data=&data;
                 state.buff=buff;
 
-                pthread_t g_pipeline;
-
                 pthread_create(&g_pipeline,NULL,stream_thread,&state);
+
                 break;
             case 2:
-                snap(fd);
+                ctrl_count=enum_cntrl(fd,ctrls);
+                if(ctrl_count==0){
+                    printf("No available controls\n");
+                }
                 break;
             case 3:
+                if(ctrl_count==0){
+                    printf("Please query controls first.\n");
+                    continue;
+                }
                 printf("Do you want to set or the current value of a control?:\n[0]Set [1]Get: ");
                 scanf("%d",&input);
                 //set
@@ -153,14 +160,18 @@ int main(int argc,char * argv[]){
                 for (int i =0; i < 3; i++) {
                     munmap(buff[i], buff_size);
                 }
-                close(fd);
                 printf("You can now press 0 to quit the application\n");
+                break;
+
+            case 5:
+                snap(fd);
                 break;
             case 0:
                 if(state.is_streaming){
                     printf("Turn off streaming before quiting.");
                     continue;
                 }
+                close(fd);
                 return 0;
             default:
                 printf("Enter valid input!");

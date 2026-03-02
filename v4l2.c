@@ -85,7 +85,6 @@ int enum_resolution(int fd,struct img_res * res, int format){
 
 int enum_cntrl(int fd,struct img_ctrl * available){
     int count=0;
-    //TODO modify the logic to selection based instead of listing
     struct v4l2_queryctrl ctrl={0};
     ctrl.id=V4L2_CTRL_FLAG_NEXT_CTRL;
     printf("Available controls:\n");
@@ -121,7 +120,7 @@ int enum_cntrl(int fd,struct img_ctrl * available){
 int set_ctrl(int fd,uint32_t ctrl_id,int32_t val){
     struct v4l2_control vctrls; 
     vctrls.id=ctrl_id;
-    printf("%d\n",vctrls.id);
+    printf("[debug]fmt_id:%d\n",vctrls.id);
     vctrls.value=val;
     if(ioctl(fd,VIDIOC_S_CTRL,&vctrls)==-1){
         printf("Eror setting controls\n");

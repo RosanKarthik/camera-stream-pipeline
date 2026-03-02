@@ -3,6 +3,13 @@
 
 #include <stdint.h>
 
+struct StreamInfo{
+    char fmt_name[16];
+    int fmt_id;
+    int height;
+    int width;
+};
+
 struct pix_formats{
     uint8_t format[32];
     uint32_t id;
@@ -44,7 +51,5 @@ int dequeue_buff(int fd, int *bytes_deq);
 int start_streaming(int fd);
 
 int stop_streaming(int fd);
-
-int snap(int fd);
 
 #endif

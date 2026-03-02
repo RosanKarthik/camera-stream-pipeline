@@ -22,7 +22,8 @@ int main(int argc,char * argv[]){
     int num_buffs;
     int input;
     int ctrl_count=0;
-
+    
+    struct StreamInfo info;
     struct pix_formats available[16]={0};
     struct img_res res[16]={0};
     struct img_ctrl ctrls[20]={0};
@@ -46,8 +47,6 @@ int main(int argc,char * argv[]){
                     continue;
                 }
                 int fmt_count=enum_formats(fd,available);
-                char fmt_name[16];
-                int fmt_id;
                 if(fmt_count==0) {
                     printf("No valid format detected. Exiting...\n");
                     return 0;
@@ -58,11 +57,11 @@ int main(int argc,char * argv[]){
                 scanf("%d",&input);
                 if(input==-1) return 0; 
 
-                fmt_id=available[input].id;
-                strncpy(fmt_name,available[input].format,16);
+                info.fmt_id=available[input].id;
+                strncpy(info.fmt_name,available[input].format,16);
 
                 //resolution query
-                int res_count= enum_resolution(fd,res,fmt_id);
+                int res_count= enum_resolution(fd,res,info.fmt_id);
                 if(res_count==0) {
                     printf("No valid resolution detected. Exiting...\n");
                     return 0;
@@ -73,10 +72,10 @@ int main(int argc,char * argv[]){
                 scanf("%d",&input);
                 if(input==-1) return 0;
 
-                int height=res[input].height;
-                int width=res[input].width;
+                info.height=res[input].height;
+                info.width=res[input].width;
 
-                set_formats(fd,width,height,fmt_id);
+                set_formats(fd,info.width,info.height,info.fmt_id);
 
                 num_buffs=req_buff(fd,3);
 
@@ -97,7 +96,7 @@ int main(int argc,char * argv[]){
 
                 gst_init(&argc, &argv);
 
-                if(gstream_setup(&data,fmt_id,width,height)){
+                if(gstream_setup(&data,&info)){
                     printf("Gstream setup success\n");
                 }
         
@@ -105,6 +104,7 @@ int main(int argc,char * argv[]){
                 state.fd=fd;
                 state.g_data=&data;
                 state.buff=buff;
+                state.info=&info;
 
                 pthread_create(&g_pipeline,NULL,stream_thread,&state);
 
@@ -164,17 +164,22 @@ int main(int argc,char * argv[]){
                 break;
 
             case 5:
-                snap(fd);
+                if(!state.is_streaming)
+                {
+                    printf("Please start the stream first.\n");
+                    continue;
+                }
+                state.snap=1;
                 break;
             case 0:
                 if(state.is_streaming){
-                    printf("Turn off streaming before quiting.");
+                    printf("Turn off streaming before quiting.\n");
                     continue;
                 }
                 close(fd);
                 return 0;
             default:
-                printf("Enter valid input!");
+                printf("Enter valid input!\n");
                 sleep(1);
                 continue;
         }

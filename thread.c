@@ -1,5 +1,9 @@
 #include <stdio.h>
 #include "thread.h"
+#include <time.h>
+#include <linux/videodev2.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 void* stream_thread(void* arg) {
     struct StreamState *state = (struct StreamState *)arg;
@@ -9,11 +13,30 @@ void* stream_thread(void* arg) {
         //v4l2 parts   
         int bytes_deq;
         int index = dequeue_buff(state->fd, &bytes_deq);
-
         if(index==-1){
             //debug print
             printf("Buffer not allocated...Skipping...");
             continue;
+        }
+        
+        if(state->snap){
+            char filename[256];
+            char extension[8];
+            time_t now = time(NULL);
+            struct tm *t = localtime(&now);
+            char time[100];
+
+            strftime(time, sizeof(time), "%d-%m-%Y %H:%M:%S", t); 
+
+            if(state->info->fmt_id==V4L2_PIX_FMT_YUYV) strncpy(extension,"yuv",3);
+            else if(state->info->fmt_id==V4L2_PIX_FMT_MJPEG) strncpy(extension,"jpg",3);
+
+            sprintf(filename, "%s_%s.%s", state->info->fmt_name,time,extension);
+            int file = open(filename, O_RDWR | O_CREAT, 0666);
+            write(file, state->buff[index], bytes_deq);
+            printf("Snapped at : %s",time);
+            state->snap=0;
+            close(file);
         }
 
         // printf("Frame %d pushed, size = %d bytes\n", frame_count, bytes_deq);
@@ -29,6 +52,7 @@ void* stream_thread(void* arg) {
         GstFlowReturn ret = gst_app_src_push_buffer(GST_APP_SRC(state->g_data->appsrc), state->g_data->g_buff);
 
         if (ret != GST_FLOW_OK) {
+            //[imp bug fix] queue the buff even if skipping due to gstream err 
             queue_buff(state->fd, index);
             g_printerr("Failed to push buffer\n");
             break;

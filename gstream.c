@@ -28,8 +28,8 @@ int gstream_deinit(struct CustomData * data){
     return 0;
 }
 
-int gstream_setup(struct CustomData * data,int fmt_id,int width,int height){
-    switch(fmt_id){
+int gstream_setup(struct CustomData * data,struct StreamInfo * info){
+    switch(info->fmt_id){
         case V4L2_PIX_FMT_MJPEG:
             data->pipeline = gst_pipeline_new("mjpeg-appsrc-pipeline");
             data->appsrc  = gst_element_factory_make("appsrc", "src");
@@ -46,8 +46,8 @@ int gstream_setup(struct CustomData * data,int fmt_id,int width,int height){
             gst_element_link_many(data->appsrc,data->jpegdec, data->conv, data->sink, NULL);            
             data->caps = gst_caps_new_simple(
                 "image/jpeg",
-                "width", G_TYPE_INT, width,
-                "height", G_TYPE_INT, height,
+                "width", G_TYPE_INT, info->width,
+                "height", G_TYPE_INT, info->height,
                 "framerate", GST_TYPE_FRACTION, 30, 1,
                 NULL);
             // strcpy(name,"mjepg.jpg");
@@ -68,8 +68,8 @@ int gstream_setup(struct CustomData * data,int fmt_id,int width,int height){
             data->caps = gst_caps_new_simple(
                 "video/x-raw",
                 "format", G_TYPE_STRING, "YUY2",
-                "width", G_TYPE_INT, width,
-                "height", G_TYPE_INT, height,
+                "width", G_TYPE_INT, info->width,
+                "height", G_TYPE_INT, info->height,
                 "framerate", GST_TYPE_FRACTION, 10, 1,
                 NULL);
             // strcpy(name,"yuv.yuv");

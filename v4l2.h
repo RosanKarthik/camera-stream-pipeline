@@ -44,4 +44,6 @@ int start_streaming(int fd);
 
 int stop_streaming(int fd);
 
+int snap(int fd);
+
 #endif

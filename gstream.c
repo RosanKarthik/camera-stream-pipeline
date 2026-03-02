@@ -76,6 +76,7 @@ int gstream_setup(struct CustomData * data,int fmt_id,int width,int height){
             break;
         default:
             printf("Invalid Format ID \n");
+            return-1;
     }
     g_object_set(data->appsrc,
         "caps", data->caps,

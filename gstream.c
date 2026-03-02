@@ -8,6 +8,16 @@
 
 // #include "v4l2.h"
 
+/*
+func name:  gstream_init
+args:
+    struct CustomData: struct containing the pipeline elements 
+desc:  
+    this function initializes the elements in the struct and creates the pipeline
+returns:
+    0 on success 
+    -1 on error
+*/
 int gstream_init(struct CustomData * data){
     data->pipeline = gst_pipeline_new("v4l2-appsrc-pipeline");
     data->appsrc = gst_element_factory_make("appsrc", "src");
@@ -15,12 +25,22 @@ int gstream_init(struct CustomData * data){
     data->sink = gst_element_factory_make("fpsdisplaysink", "sink");
 
     if (!data->pipeline || !data->appsrc || !data->conv || !data->sink) {
-        g_printerr("Failed to create GStreamer elements\n");
+        g_printerr("[Gstream]Failed to create GStreamer elements\n");
         return -1;
     }
     return 0;
 }
 
+/*
+func name:  gstream_deinit
+args:
+    struct CustomData: struct containing the pipeline elements 
+desc:  
+    this function deinitializes the elements in the struct
+returns:
+    0 on success 
+    -1 on error
+*/
 int gstream_deinit(struct CustomData * data){
     gst_app_src_end_of_stream(GST_APP_SRC(data->appsrc));
     gst_element_set_state(data->pipeline, GST_STATE_NULL);
@@ -28,6 +48,17 @@ int gstream_deinit(struct CustomData * data){
     return 0;
 }
 
+/*
+func name:  gstream_setup
+args:
+    struct CustomData: struct containing the pipeline elements 
+    struct StreamInfo: struct containing the info of the stream running
+desc:  
+    this function sets up the pipeline to the formats provided by the info stuct
+returns:
+    0 on success 
+    -1 on error
+*/
 int gstream_setup(struct CustomData * data,struct StreamInfo * info){
     switch(info->fmt_id){
         case V4L2_PIX_FMT_MJPEG:
@@ -38,7 +69,7 @@ int gstream_setup(struct CustomData * data,struct StreamInfo * info){
             data->sink    = gst_element_factory_make("autovideosink", "sink");
 
             if (!data->pipeline || !data->appsrc || !data->jpegdec || !data->conv || !data->sink) {
-                g_printerr("Failed to create GStreamer elements\n");
+                g_printerr("[Gstream]Failed to create GStreamer elements\n");
                 return -1;
             }
 
@@ -56,10 +87,10 @@ int gstream_setup(struct CustomData * data,struct StreamInfo * info){
             data->pipeline = gst_pipeline_new("v4l2-appsrc-pipeline");
             data->appsrc = gst_element_factory_make("appsrc", "src");
             data->conv = gst_element_factory_make("videoconvert", "conv");
-            data->sink = gst_element_factory_make("fpsdisplaysink", "sink");
+            data->sink = gst_element_factory_make("autovideosink", "sink");
 
             if (!data->pipeline || !data->appsrc || !data->conv || !data->sink) {
-                g_printerr("Failed to create GStreamer elements\n");
+                g_printerr("[Gstream]Failed to create GStreamer elements\n");
                 return -1;
             }
 
@@ -75,7 +106,7 @@ int gstream_setup(struct CustomData * data,struct StreamInfo * info){
             // strcpy(name,"yuv.yuv");
             break;
         default:
-            printf("Invalid Format ID \n");
+            printf("[Gstream]Invalid Format ID \n");
             return-1;
     }
     g_object_set(data->appsrc,

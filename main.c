@@ -53,8 +53,11 @@ int main(int argc,char * argv[]){
                 }
 
                 //format choice
-                printf("[-1]Exit\nInput:");
+                printf("[-1]Exit\n");
+                printf("-----------------------------------------------------------------------------\n");
+                printf("Input:");
                 scanf("%d",&input);
+                printf("-----------------------------------------------------------------------------\n");
                 if(input==-1) return 0; 
 
                 info.fmt_id=available[input].id;
@@ -68,8 +71,11 @@ int main(int argc,char * argv[]){
                 }
 
                 //resolution choice
-                printf("[-1]Exit\nInput:");
+                printf("[-1]Exit\n");
+                printf("-----------------------------------------------------------------------------\n");
+                printf("Input:");
                 scanf("%d",&input);
+                printf("-----------------------------------------------------------------------------\n");
                 if(input==-1) return 0;
 
                 info.height=res[input].height;
@@ -80,12 +86,12 @@ int main(int argc,char * argv[]){
                 num_buffs=req_buff(fd,3);
 
                 if(num_buffs<3){
-                    printf("Buffers allocated lesser than requested : %d\n",num_buffs);
+                    printf("[debug]Buffers allocated lesser than requested : %d\n",num_buffs);
                 }
 
                 for(int i=0;i<3;i++){
                     buff_size=query_buff(fd,i,&buff[i]);
-                    printf("Bytes allocated for buff %d : %d\n",i,buff_size);
+                    printf("[debug]Bytes allocated for buff %d : %d\n",i,buff_size);
                     queue_buff(fd,i);
                 }
 

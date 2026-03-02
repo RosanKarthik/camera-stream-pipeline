@@ -15,7 +15,7 @@ void* stream_thread(void* arg) {
         int index = dequeue_buff(state->fd, &bytes_deq);
         if(index==-1){
             //debug print
-            printf("Buffer not allocated...Skipping...");
+            printf("[Thread]v4l2 buffer not allocated...Skipping...");
             continue;
         }
         
@@ -34,7 +34,6 @@ void* stream_thread(void* arg) {
             sprintf(filename, "%s_%s.%s", state->info->fmt_name,time,extension);
             int file = open(filename, O_RDWR | O_CREAT, 0666);
             write(file, state->buff[index], bytes_deq);
-            printf("Snapped at : %s",time);
             state->snap=0;
             close(file);
         }
@@ -54,7 +53,7 @@ void* stream_thread(void* arg) {
         if (ret != GST_FLOW_OK) {
             //[imp bug fix] queue the buff even if skipping due to gstream err 
             queue_buff(state->fd, index);
-            g_printerr("Failed to push buffer\n");
+            g_printerr("[Thread]Failed to push buffer\n");
             break;
         }
 

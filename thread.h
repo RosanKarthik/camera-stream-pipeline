@@ -9,8 +9,8 @@ struct StreamState{
     int fd;
     struct CustomData * g_data;
     unsigned char ** buff;
-    int is_streaming;
-    int snap;
+    volatile int is_streaming;
+    volatile int snap;
     struct StreamInfo * info;
     pthread_mutex_t lock;
 };

@@ -25,7 +25,7 @@ returns:
 void query_capablities(int fd){
     struct v4l2_capability vcap;
     if (-1 == ioctl(fd, VIDIOC_QUERYCAP, &vcap)) {
-		printf("Query capabilites\n");
+		printf("[v4l2]Query capabilites\n");
 	}
 
 	// if (!(vcap.capabilities & V4L2_CAP_READWRITE)) {
@@ -33,15 +33,26 @@ void query_capablities(int fd){
 	// }
 
 	if (!(vcap.capabilities & V4L2_CAP_STREAMING)) {
-		printf("Device does not support streaming i/o\n");
+		printf("[v4l2]Device does not support streaming i/o\n");
 	}
 
     if(!(vcap.capabilities & V4L2_CAP_VIDEO_CAPTURE)){
-        printf("Not Compatible\n");
+        printf("[v4l2]Not Compatible\n");
     }
     return;
 }
 
+/*
+func name:  enum_formats
+args:
+    int fd: file descriptor to the camera driver
+    struct pix_formats: structure to store all the formats names and ids supported 
+desc:  
+    this function lists all the formats available and stores the names,ids to the struct passed
+returns:
+    0 on success 
+    -1 on error
+*/
 int enum_formats(int fd,struct pix_formats * available){
     struct v4l2_fmtdesc fmt={0};
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -54,17 +65,29 @@ int enum_formats(int fd,struct pix_formats * available){
         fmt.index++;
     }
     if(fmt.index==0) {
-        printf("Error querying formats\n");
+        printf("[v4l2]Error querying formats\n");
         return -1;
     }    
     return fmt.index;
 }
 
+/*
+func name:  enum_reolution
+args:
+    int fd: file descriptor to the camera driver
+    struct img_res: structure to store all the resolutions supported 
+desc:  
+    this function lists all the resolutions available and stores to the struct passed
+returns:
+    no of supported resolutions on success 
+    -1 on error
+*/
 int enum_resolution(int fd,struct img_res * res, int format){
     struct v4l2_frmsizeenum frame={0};
     frame.pixel_format = format;
     frame.index=0;
     printf("Available resolutions:\n");
+    printf("-----------------------------------------------------------------------------\n");
     while(ioctl(fd,VIDIOC_ENUM_FRAMESIZES,&frame)!=-1){
         if (frame.type == V4L2_FRMSIZE_TYPE_DISCRETE) {
             printf("[%d]%d x %d\n",frame.index,frame.discrete.width,frame.discrete.height);
@@ -77,20 +100,31 @@ int enum_resolution(int fd,struct img_res * res, int format){
         frame.index++;
     }
     if(frame.index==0) {
-        printf("Error querying resolutions\n");
+        printf("[v4l2]Error querying resolutions\n");
         return -1;
     }    
     return frame.index;
 }
 
+/*
+func name:  enum_cntrl
+args:
+    int fd: file descriptor to the camera driver
+    struct available: structure to store all the image control names and ids supported 
+desc:  
+    this function lists all the controls available and stores the names,ids to the struct passed
+returns:
+    no of supported controls on success 
+*/
 int enum_cntrl(int fd,struct img_ctrl * available){
     int count=0;
     struct v4l2_queryctrl ctrl={0};
     ctrl.id=V4L2_CTRL_FLAG_NEXT_CTRL;
     printf("Available controls:\n");
+    printf("-----------------------------------------------------------------------------\n");
     while(ioctl(fd,VIDIOC_QUERYCTRL,&ctrl)!=-1){
         if(ctrl.flags&V4L2_CTRL_FLAG_DISABLED){
-            printf("Control flag disabled for %s. Skipping..\n",ctrl.name);
+            printf("[v4l2]Control flag disabled for %s. Skipping..\n",ctrl.name);
             ctrl.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
             // count++;
             continue;
@@ -116,6 +150,18 @@ int enum_cntrl(int fd,struct img_ctrl * available){
     }
     return count;
 }
+/*
+func name:  set_control
+args:
+    int fd: file descriptor to the camera driver
+    uint32_t ctrl_id: id of the control to set
+    int32_t val: value to set the control to
+desc:  
+    this function sets the value to the control corresponding to the id passed
+returns:
+    0 on success 
+    -1 on error
+*/
 
 int set_ctrl(int fd,uint32_t ctrl_id,int32_t val){
     struct v4l2_control vctrls; 
@@ -123,19 +169,30 @@ int set_ctrl(int fd,uint32_t ctrl_id,int32_t val){
     printf("[debug]fmt_id:%d\n",vctrls.id);
     vctrls.value=val;
     if(ioctl(fd,VIDIOC_S_CTRL,&vctrls)==-1){
-        printf("Eror setting controls\n");
+        printf("[v4l2]Eror setting controls\n");
         return -1;
     }
     printf("Successfully set cntrl to %d \n",vctrls.value);
     return 0;
 }   
 
+/*
+func name:  get_control
+args:
+    int fd: file descriptor to the camera driver
+    uint32_t ctrl_id: id of the control to get
+desc:  
+    this function gets the value of the control corresponding to the id passed
+returns:
+    0 on success 
+    -1 on error
+*/
 int get_ctrl(int fd,uint32_t ctrl_id){
     struct v4l2_control vctrls;
     vctrls.id=ctrl_id;
     printf("%d\n",vctrls.id);
     if(ioctl(fd,VIDIOC_G_CTRL,&vctrls)==-1){
-        printf("Error getting control val\n");
+        printf("[v4l2]Error getting control val\n");
         return -1;
     }
     printf("The value of the selected control is : %d\n",vctrls.value);
@@ -164,7 +221,7 @@ void set_formats(int fd,int width,int height,int pixformat){
     int res=ioctl(fd,VIDIOC_S_FMT,&vformat);
     if(res==-1)
     {
-        printf("Error setting formats\n");
+        printf("[v4l2]Error setting formats\n");
     }
     return;
 }
@@ -185,7 +242,7 @@ int req_buff(int fd,int count){
     req.count=count;
     req.memory=V4L2_MEMORY_MMAP;
     if(ioctl(fd,VIDIOC_REQBUFS,&req)==-1){
-        printf("Error requesting buffer\n");
+        printf("[v4l2]Error requesting buffer\n");
     }
     return req.count;
 }
@@ -207,7 +264,7 @@ int query_buff(int fd,int index,unsigned char ** buffer){
     buff.memory=V4L2_MEMORY_MMAP;
     buff.index=index;
     if(ioctl(fd,VIDIOC_QUERYBUF,&buff)==-1){
-        printf("Error querying buffer\n");
+        printf("[v4l2]Error querying buffer\n");
     }
     *buffer= (uint8_t *)mmap(NULL,buff.length,PROT_READ|PROT_WRITE,MAP_SHARED,fd,buff.m.offset);
     return buff.length;
@@ -230,7 +287,7 @@ int queue_buff(int fd,int index){
 	buff.index = index;
 
 	if (ioctl(fd, VIDIOC_QBUF, &buff) == -1) {
-		printf("Error Queueing Buffer\n");
+		printf("[v4l2]Error Queueing Buffer\n");
 	}
     return buff.bytesused;
 }
@@ -251,7 +308,7 @@ int dequeue_buff(int fd,int * bytes_deq){
 	buff.index = 0;
 
 	if (ioctl(fd, VIDIOC_DQBUF, &buff) == -1) {
-		printf("Error DeQueueing Buffer\n");
+		printf("[v4l2]Error DeQueueing Buffer\n");
         return -1;
 	}
     *bytes_deq=buff.bytesused;
@@ -270,7 +327,7 @@ returns:
 int start_streaming(int fd){
     unsigned int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     if(ioctl(fd,VIDIOC_STREAMON,&type)==-1){
-        printf("Error starting stream\n");
+        printf("[v4l2]Error starting stream\n");
     }
     return 0;
 }

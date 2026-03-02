@@ -1,8 +1,6 @@
 #ifndef GSTREAM_APP_H
 #define GSTREAM_APP_H
 
-#include <pthread.h>
-#include <linux/videodev2.h>
 #include "gst/gst.h"
 #include "gst/app/gstappsrc.h"
 #include "v4l2.h"

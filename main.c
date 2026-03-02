@@ -30,6 +30,8 @@ int main(int argc,char * argv[]){
     struct CustomData data={0};
     pthread_t g_pipeline;
     struct StreamState state;
+    
+    gst_init(&argc, &argv);
 
     while(1){
         query_capablities(fd);  
@@ -46,6 +48,7 @@ int main(int argc,char * argv[]){
                     printf("Stream is already on...\nPlease turn off if you want to change formats/resolution.\n");
                     continue;
                 }
+                
                 int fmt_count=enum_formats(fd,available);
                 if(fmt_count==0) {
                     printf("No valid format detected. Exiting...\n");
@@ -99,8 +102,6 @@ int main(int argc,char * argv[]){
                 start_streaming(fd);
 
                 //gstream pipeline start
-
-                gst_init(&argc, &argv);
 
                 if(gstream_setup(&data,&info)){
                     printf("Gstream setup success\n");
@@ -166,6 +167,8 @@ int main(int argc,char * argv[]){
                 for (int i =0; i < 3; i++) {
                     munmap(buff[i], buff_size);
                 }
+                req_buff(fd, 0);
+                gstream_deinit(&data);
                 printf("You can now press 0 to quit the application\n");
                 break;
 

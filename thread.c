@@ -20,16 +20,16 @@ void* stream_thread(void* arg) {
         }
         
         if(state->snap){
-            char filename[256];
-            char extension[8];
+            char filename[256]={0};
+            char extension[8]={0};
             time_t now = time(NULL);
             struct tm *t = localtime(&now);
             char time[100];
 
             strftime(time, sizeof(time), "%d-%m-%Y %H:%M:%S", t); 
 
-            if(state->info->fmt_id==V4L2_PIX_FMT_YUYV) strncpy(extension,"yuv",3);
-            else if(state->info->fmt_id==V4L2_PIX_FMT_MJPEG) strncpy(extension,"jpg",3);
+            if(state->info->fmt_id==V4L2_PIX_FMT_YUYV) strcpy(extension,"yuv");
+            else if(state->info->fmt_id==V4L2_PIX_FMT_MJPEG) strcpy(extension,"jpg");
 
             sprintf(filename, "%s_%s.%s", state->info->fmt_name,time,extension);
             int file = open(filename, O_RDWR | O_CREAT, 0666);
@@ -61,6 +61,7 @@ void* stream_thread(void* arg) {
         queue_buff(state->fd, index);
 
     }
+    gst_element_set_state(state->g_data->pipeline, GST_STATE_NULL);
     printf("\n[Thread] Streaming stopped.\n");
     return NULL;
 }

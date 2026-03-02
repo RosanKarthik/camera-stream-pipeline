@@ -3,6 +3,13 @@
 
 #include <stdint.h>
 
+struct StreamInfo{
+    char fmt_name[16];
+    int fmt_id;
+    int height;
+    int width;
+};
+
 struct pix_formats{
     uint8_t format[32];
     uint32_t id;
@@ -16,6 +23,7 @@ struct img_res{
 struct img_ctrl{
     uint32_t id;
     char name[64];
+    uint8_t is_init;
 };
 
 void query_capablities(int fd);

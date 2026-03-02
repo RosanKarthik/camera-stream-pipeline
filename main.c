@@ -14,124 +14,174 @@
 #include "v4l2.h"
 #include "thread.h"
 
-//TODO create the header
-// #include "gstream.h"
-
 int main(int argc,char * argv[]){
     unsigned char *buff[3];
-	int fd = open("/dev/video0", O_RDWR);
-	int buff_size;
-	int index;
-	int num_buffs;
+    int fd = open("/dev/video0", O_RDWR);
+    int buff_size;
+    int index;
+    int num_buffs;
     int input;
-    query_capablities(fd);
-
-    //control query
-    printf("Do you want to change any controls?:\n[0]No [1]Yes: ");
-    scanf("%d",&input);
-    if(input){
-        struct img_ctrl ctrls[20];
-        int ctrl_count=enum_cntrl(fd,ctrls);
-        if(ctrl_count==0){
-            printf("No available controls");
-        }
-        else{
-            //control choice
-            printf("[0]No\nEnter the control number to change:\nInput:");
-            scanf("%d",&input);
-            if(input){
-                int32_t val;
-                uint32_t ctrl_id=ctrls[input].id;
-                get_ctrl(fd,ctrl_id);
-                printf("Enter the value to set: ");
-                scanf("%d",&val);
-                set_ctrl(fd,ctrl_id,val);
-            }
-            //TODO ADD GET CNTRL CHOICE
-        }
-    }
-
-    //format query
+    int ctrl_count=0;
+    
+    struct StreamInfo info;
     struct pix_formats available[16]={0};
-    int fmt_count=enum_formats(fd,available);
-    char fmt_name[16];
-    int fmt_id;
-    if(fmt_count==0) {
-        printf("No valid format detected. Exiting...\n");
-        return 0;
-    }
-
-    //format choice
-    printf("[-1]Exit\nInput:");
-    scanf("%d",&input);
-    if(input==-1) return 0; 
-
-    fmt_id=available[input].id;
-    strncpy(fmt_name,available[input].format,16);
-
-    //resolution query
     struct img_res res[16]={0};
-    int res_count= enum_resolution(fd,res,fmt_id);
-    if(res_count==0) {
-        printf("No valid resolution detected. Exiting...\n");
-        return 0;
-    }
-
-    //resolution choice
-    printf("[-1]Exit\nInput:");
-    scanf("%d",&input);
-    if(input==-1) return 0;
-
-    int height=res[input].height;
-    int width=res[input].width;
-
-    set_formats(fd,width,height,fmt_id);
-
-    num_buffs=req_buff(fd,3);
-
-    if(num_buffs<3){
-        printf("Buffers allocated lesser than requested : %d\n",num_buffs);
-    }
-
-    for(int i=0;i<3;i++){
-        buff_size=query_buff(fd,i,&buff[i]);
-        printf("Bytes allocated for buff %d : %d\n",i,buff_size);
-        queue_buff(fd,i);
-    }
-
-    //v4l2 start streaming
-    start_streaming(fd);
-
-    //gstream pipeline start
+    struct img_ctrl ctrls[20]={0};
     struct CustomData data={0};
-    gst_init(&argc, &argv);
-    if(!gstream_init(&data)){
-        printf("Gstream pipeline initialized\n");
-    }
-
-    if(gstream_setup(&data,fmt_id,width,height)){
-        printf("Gstream setup success\n");
-    }
-    struct StreamState state;
-    state.is_streaming=1;
-    state.fd=fd;
-    state.g_data=&data;
-    state.buff=buff;
-
     pthread_t g_pipeline;
+    struct StreamState state;
 
-    pthread_create(&g_pipeline,NULL,stream_thread,&state);
+    while(1){
+        query_capablities(fd);  
+        printf("-----------------------------------------------------------------------------\n");
+        printf("[1]Start Streaming\t[2]Query Controls\t[3]Get/Set Controls\n[4]Stop Streaming\t[5]Take a Snap\t\t[0]Quit\n");
+        printf("-----------------------------------------------------------------------------\n");
+        printf("Choice: ");
+        scanf("%d",&input);
+        printf("-----------------------------------------------------------------------------\n");
+        switch(input){
+            case 1:
+                //format query
+                if(state.is_streaming){
+                    printf("Stream is already on...\nPlease turn off if you want to change formats/resolution.\n");
+                    continue;
+                }
+                int fmt_count=enum_formats(fd,available);
+                if(fmt_count==0) {
+                    printf("No valid format detected. Exiting...\n");
+                    return 0;
+                }
 
-    state.is_streaming=0;
+                //format choice
+                printf("[-1]Exit\nInput:");
+                scanf("%d",&input);
+                if(input==-1) return 0; 
 
-    pthread_join(g_pipeline,NULL);
-   
-    //v4l2 buff deinit
-    for (int i =0; i < 3; i++) {
-		munmap(buff[i], buff_size);
-	}
-    stop_streaming(fd);
-	// close(file);
-	close(fd);
-    return 0;
+                info.fmt_id=available[input].id;
+                strncpy(info.fmt_name,available[input].format,16);
+
+                //resolution query
+                int res_count= enum_resolution(fd,res,info.fmt_id);
+                if(res_count==0) {
+                    printf("No valid resolution detected. Exiting...\n");
+                    return 0;
+                }
+
+                //resolution choice
+                printf("[-1]Exit\nInput:");
+                scanf("%d",&input);
+                if(input==-1) return 0;
+
+                info.height=res[input].height;
+                info.width=res[input].width;
+
+                set_formats(fd,info.width,info.height,info.fmt_id);
+
+                num_buffs=req_buff(fd,3);
+
+                if(num_buffs<3){
+                    printf("Buffers allocated lesser than requested : %d\n",num_buffs);
+                }
+
+                for(int i=0;i<3;i++){
+                    buff_size=query_buff(fd,i,&buff[i]);
+                    printf("Bytes allocated for buff %d : %d\n",i,buff_size);
+                    queue_buff(fd,i);
+                }
+
+                //v4l2 start streaming
+                start_streaming(fd);
+
+                //gstream pipeline start
+
+                gst_init(&argc, &argv);
+
+                if(gstream_setup(&data,&info)){
+                    printf("Gstream setup success\n");
+                }
+        
+                state.is_streaming=1;
+                state.fd=fd;
+                state.g_data=&data;
+                state.buff=buff;
+                state.info=&info;
+
+                pthread_create(&g_pipeline,NULL,stream_thread,&state);
+
+                break;
+            case 2:
+                ctrl_count=enum_cntrl(fd,ctrls);
+                if(ctrl_count==0){
+                    printf("No available controls\n");
+                }
+                break;
+            case 3:
+                if(ctrl_count==0){
+                    printf("Please query controls first.\n");
+                    continue;
+                }
+                printf("Do you want to set or the current value of a control?:\n[0]Set [1]Get: ");
+                scanf("%d",&input);
+                //set
+                if(!input){
+                    printf("[0]Exit\nEnter the control number to change:\nInput:");
+                    scanf("%d",&input);
+                    if(input){
+                        int32_t val;
+                        uint32_t ctrl_id=ctrls[input].id;
+                        get_ctrl(fd,ctrl_id);
+                        printf("Enter the value to set: ");
+                        scanf("%d",&val);
+                        set_ctrl(fd,ctrl_id,val);
+                        break;
+                    }
+                    else{
+                        break;
+                    }
+                }
+                //get
+                else{
+                    printf("[0]Exit\nEnter the control number to get:\nInput:");
+                    scanf("%d",&input);
+                    if(input){
+                        int32_t val;
+                        uint32_t ctrl_id=ctrls[input].id;
+                        get_ctrl(fd,ctrl_id);
+                        break;
+                    }
+                    else{
+                        break;
+                    }
+                }
+            case 4:
+                state.is_streaming=0;
+                pthread_join(g_pipeline,NULL);
+                stop_streaming(fd);     
+                for (int i =0; i < 3; i++) {
+                    munmap(buff[i], buff_size);
+                }
+                printf("You can now press 0 to quit the application\n");
+                break;
+
+            case 5:
+                if(!state.is_streaming)
+                {
+                    printf("Please start the stream first.\n");
+                    continue;
+                }
+                state.snap=1;
+                break;
+            case 0:
+                if(state.is_streaming){
+                    printf("Turn off streaming before quiting.\n");
+                    continue;
+                }
+                close(fd);
+                return 0;
+            default:
+                printf("Enter valid input!\n");
+                sleep(1);
+                continue;
+        }
+    }
 }

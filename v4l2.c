@@ -85,7 +85,6 @@ int enum_resolution(int fd,struct img_res * res, int format){
 
 int enum_cntrl(int fd,struct img_ctrl * available){
     int count=0;
-    //TODO modify the logic to selection based instead of listing
     struct v4l2_queryctrl ctrl={0};
     ctrl.id=V4L2_CTRL_FLAG_NEXT_CTRL;
     printf("Available controls:\n");
@@ -121,7 +120,7 @@ int enum_cntrl(int fd,struct img_ctrl * available){
 int set_ctrl(int fd,uint32_t ctrl_id,int32_t val){
     struct v4l2_control vctrls; 
     vctrls.id=ctrl_id;
-    printf("%d\n",vctrls.id);
+    printf("[debug]fmt_id:%d\n",vctrls.id);
     vctrls.value=val;
     if(ioctl(fd,VIDIOC_S_CTRL,&vctrls)==-1){
         printf("Eror setting controls\n");
@@ -140,7 +139,7 @@ int get_ctrl(int fd,uint32_t ctrl_id){
         return -1;
     }
     printf("The value of the selected control is : %d\n",vctrls.value);
-    return 0;
+    return vctrls.value;
 }
 
 /*
@@ -253,6 +252,7 @@ int dequeue_buff(int fd,int * bytes_deq){
 
 	if (ioctl(fd, VIDIOC_DQBUF, &buff) == -1) {
 		printf("Error DeQueueing Buffer\n");
+        return -1;
 	}
     *bytes_deq=buff.bytesused;
     return buff.index;
@@ -292,100 +292,101 @@ int stop_streaming(int fd){
     return 0;
 }
 
-int v4l2_main(){
-    unsigned char *buff[3];
-
-	int fd = open("/dev/video0", O_RDWR);
-
-    query_capablities(fd);
+// int snap(int fd){
+//     unsigned char *buff[3];
     
-    // enum_cntrl(fd);
-    
-    int input;
+//     int input;
+// 	int index;
+// 	int num_buffs;
+//     int buff_size;
 
-    //format query
-    struct pix_formats available[16]={0};
-    int fmt_count=enum_formats(fd,available);
-    char fmt_name[16];
-    int fmt_id;
-    if(fmt_count==0) {
-        printf("No valid format detected. Exiting...\n");
-        return 0;
-    }
+//     struct pix_formats available[16]={0};
+//     struct img_res res[16]={0};
+//     struct img_ctrl ctrls[20];
 
-    //format choice
-    printf("[-1]Exit\nInput:");
-    scanf("%d",&input);
-    if(input==-1) return 0;
+//     query_capablities(fd);  
 
-    fmt_id=available[input].id;
-    strncpy(fmt_name,available[input].format,16);
+//     //format query
+//     int fmt_count=enum_formats(fd,available);
+//     char fmt_name[16];
+//     int fmt_id;
+//     if(fmt_count==0) {
+//         printf("No valid format detected. Exiting...\n");
+//         return 0;
+//     }
 
-    //resolution query
-    struct img_res res[16]={0};
-    int res_count= enum_resolution(fd,res,fmt_id);
-    if(res_count==0) {
-        printf("No valid resolution detected. Exiting...\n");
-        return 0;
-    }
+//     //format choice
+//     printf("[-1]Exit\nInput:");
+//     scanf("%d",&input);
+//     if(input==-1) return 0; 
 
-    //format choice
-    printf("[-1]Exit\nInput:");
-    scanf("%d",&input);
-    if(input==-1) return 0;
+//     fmt_id=available[input].id;
+//     strncpy(fmt_name,available[input].format,16);
 
-    int height=res[input].height;
-    int width=res[input].width;
+//     //resolution query
+//     int res_count= enum_resolution(fd,res,fmt_id);
+//     if(res_count==0) {
+//         printf("No valid resolution detected. Exiting...\n");
+//         return 0;
+//     }
 
-	int size;
-	int index;
-	int num_buffs;
+//     //resolution choice
+//     printf("[-1]Exit\nInput:");
+//     scanf("%d",&input);
+//     if(input==-1) return 0;
 
-    set_formats(fd,width,height,fmt_id);
-    num_buffs=req_buff(fd,3);
+//     int height=res[input].height;
+//     int width=res[input].width;
 
-    if(num_buffs<3){
-        printf("Buffers allocated lesser than requested : %d\n",num_buffs);
-    }
+//     set_formats(fd,width,height,fmt_id);
 
-    for(int i=0;i<3;i++){
-        size=query_buff(fd,i,&buff[i]);
-        printf("Bytes allocated for buff %d : %d\n",i,size);
-        queue_buff(fd,i);
-    }
+//     num_buffs=req_buff(fd,3);
 
-    start_streaming(fd);
+//     if(num_buffs<3){
+//         printf("Buffers allocated lesser than requested : %d\n",num_buffs);
+//     }
 
-    fd_set fds;
-	FD_ZERO(&fds);
-	FD_SET(fd, &fds);
-	struct timeval tv = {0};
-	tv.tv_sec = 2;
-	int r = select(fd+1, &fds, NULL, NULL, &tv);
+//     for(int i=0;i<3;i++){
+//         buff_size=query_buff(fd,i,&buff[i]);
+//         printf("Bytes allocated for buff %d : %d\n",i,buff_size);
+//         queue_buff(fd,i);
+//     }
 
-	if(-1 == r){
-		printf("Waiting for Frame\n");
-		return -1;
-	}
+//     start_streaming(fd);
 
-    int bytes_dque;
-	index = dequeue_buff(fd,&bytes_dque);
+//     fd_set fds;
+// 	FD_ZERO(&fds);
+// 	FD_SET(fd, &fds);
+// 	struct timeval tv = {0};
+// 	tv.tv_sec = 2;
+// 	int r = select(fd+1, &fds, NULL, NULL, &tv);
 
-    printf("[BUFF %d] Amount of bytes dequeued: %d\n",index,bytes_dque);
-    char filename[64];
-    //TODO add timestamp to name
-    sprintf(filename, "%s_.%s", fmt_name,fmt_name);
+// 	if(-1 == r){
+// 		printf("Waiting for Frame\n");
+// 		return -1;
+// 	}
 
-	int file = open(filename, O_RDWR | O_CREAT, 0666);
-	write(file, buff[index], bytes_dque);
+//     int bytes_dque;
+// 	index = dequeue_buff(fd,&bytes_dque);
 
-	stop_streaming(fd);
+//     printf("[BUFF %d] Amount of bytes dequeued: %d\n",index,bytes_dque);
+//     char filename[64];
+//     char extention[8];
+//     //TODO add timestamp to name
+//     if(fmt_id==V4L2_PIX_FMT_YUYV) strncpy(extention,"yuv",3);
+//     else if(fmt_id==V4L2_PIX_FMT_MJPEG) strncpy(extention,"jpg",3);
+//     sprintf(filename, "%s_.%s", fmt_name,extention);
 
-	for (int i =0; i < 3; i++) {
-		munmap(buff[i], size);
-	}
-	close(file);
-	close(fd);
+// 	int file = open(filename, O_RDWR | O_CREAT, 0666);
+// 	write(file, buff[index], bytes_dque);
 
-	return 0;
-}
+// 	stop_streaming(fd);
+
+// 	for (int i =0; i < 3; i++) {
+// 		munmap(buff[i], buff_size);
+// 	}
+// 	close(file);
+// 	close(fd);
+
+// 	return 0;
+// }

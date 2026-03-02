@@ -15,14 +15,18 @@
 #include "thread.h"
 
 int main(int argc,char * argv[]){
-    unsigned char *buff[3];
+    unsigned char *buff[8];
     int fd = open("/dev/video0", O_RDWR);
     int buff_size;
     int index;
     int num_buffs;
     int input;
     int ctrl_count=0;
-    
+    int res_count=0;
+    int fmt_count=0;
+    int32_t ctrl_val;
+    uint32_t ctrl_id;
+
     struct StreamInfo info;
     struct pix_formats available[16]={0};
     struct img_res res[16]={0};
@@ -49,7 +53,7 @@ int main(int argc,char * argv[]){
                     continue;
                 }
                 
-                int fmt_count=enum_formats(fd,available);
+                fmt_count=enum_formats(fd,available);
                 if(fmt_count==0) {
                     printf("No valid format detected. Exiting...\n");
                     return 0;
@@ -67,7 +71,7 @@ int main(int argc,char * argv[]){
                 strncpy(info.fmt_name,available[input].format,16);
 
                 //resolution query
-                int res_count= enum_resolution(fd,res,info.fmt_id);
+                res_count= enum_resolution(fd,res,info.fmt_id);
                 if(res_count==0) {
                     printf("No valid resolution detected. Exiting...\n");
                     return 0;
@@ -86,13 +90,13 @@ int main(int argc,char * argv[]){
 
                 set_formats(fd,info.width,info.height,info.fmt_id);
 
-                num_buffs=req_buff(fd,3);
+                num_buffs=req_buff(fd,8);
 
-                if(num_buffs<3){
+                if(num_buffs<8){
                     printf("[debug]Buffers allocated lesser than requested : %d\n",num_buffs);
                 }
 
-                for(int i=0;i<3;i++){
+                for(int i=0;i<8;i++){
                     buff_size=query_buff(fd,i,&buff[i]);
                     printf("[debug]Bytes allocated for buff %d : %d\n",i,buff_size);
                     queue_buff(fd,i);
@@ -134,12 +138,11 @@ int main(int argc,char * argv[]){
                     printf("[0]Exit\nEnter the control number to change:\nInput:");
                     scanf("%d",&input);
                     if(input){
-                        int32_t val;
-                        uint32_t ctrl_id=ctrls[input].id;
+                        ctrl_id=ctrls[input].id;
                         get_ctrl(fd,ctrl_id);
                         printf("Enter the value to set: ");
-                        scanf("%d",&val);
-                        set_ctrl(fd,ctrl_id,val);
+                        scanf("%d",&ctrl_val);
+                        set_ctrl(fd,ctrl_id,ctrl_val);
                         break;
                     }
                     else{
@@ -151,7 +154,6 @@ int main(int argc,char * argv[]){
                     printf("[0]Exit\nEnter the control number to get:\nInput:");
                     scanf("%d",&input);
                     if(input){
-                        int32_t val;
                         uint32_t ctrl_id=ctrls[input].id;
                         get_ctrl(fd,ctrl_id);
                         break;

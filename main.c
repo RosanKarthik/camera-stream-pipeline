@@ -107,7 +107,7 @@ int main(int argc,char * argv[]){
 
                 //gstream pipeline start
 
-                if(gstream_setup(&data,&info)){
+                if(!gstream_setup(&data,&info)){
                     printf("Gstream setup success\n");
                 }
         
@@ -166,7 +166,7 @@ int main(int argc,char * argv[]){
                 state.is_streaming=0;
                 pthread_join(g_pipeline,NULL);
                 stop_streaming(fd);     
-                for (int i =0; i < 3; i++) {
+                for (int i =0; i < 8; i++) {
                     munmap(buff[i], buff_size);
                 }
                 req_buff(fd, 0);

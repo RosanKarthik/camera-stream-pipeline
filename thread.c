@@ -27,7 +27,7 @@ void* stream_thread(void* arg) {
         int index = dequeue_buff(state->fd, &bytes_deq);
         if(index==-1){
             //debug print
-            printf("[Thread]v4l2 buffer not allocated...Skipping...");
+            printf("[Thread]v4l2 buffer not allocated...Skipping...\n");
             continue;
         }
         

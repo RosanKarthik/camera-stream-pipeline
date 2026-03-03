@@ -35,8 +35,11 @@ int validate_inp(int * input){
 }
 
 int main(int argc,char * argv[]){
-    unsigned char *buff[8];
     int fd= openDev();
+    if(fd==-1){
+        return 0;
+    }
+    unsigned char *buff[8];
     int buff_size;
     int index;
     int num_buffs;
@@ -128,8 +131,9 @@ int main(int argc,char * argv[]){
 
                 //gstream pipeline start
 
-                if(!gstream_setup(&data,&info)){
-                    printf("Gstream setup success\n");
+                if(gstream_setup(&data,&info)==-1){
+                    printf("Gstream pipeline setup failed\n");
+                    continue;
                 }
         
                 pthread_mutex_lock(&state.lock);
@@ -199,8 +203,8 @@ int main(int argc,char * argv[]){
                 for (int i =0; i < 8; i++) {
                     munmap(buff[i], buff_size);
                 }
-                req_buff(fd, 0);
                 gstream_deinit(&data);
+                req_buff(fd, 0);
                 printf("You can now press 0 to quit the application\n");
                 break;
 

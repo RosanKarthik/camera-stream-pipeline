@@ -45,7 +45,7 @@ void query_capablities(int fd){
 /*
 func name:  enum_formats
 args:
-    int fd: file descriptor to the camera driver
+    int fd: file descriptor     to the camera driver
     struct pix_formats: structure to store all the formats names and ids supported 
 desc:  
     this function lists all the formats available and stores the names,ids to the struct passed
@@ -129,6 +129,9 @@ int enum_cntrl(int fd,struct img_ctrl * available){
             // count++;
             continue;
         }
+        if(ctrl.flags&V4L2_CTRL_FLAG_READ_ONLY){
+            printf("[WARNING]Control [%d] is read only and cannot be modified.\n",count);
+        } 
         printf("[%d]%s\n",count,ctrl.name);
         if(ctrl.type==V4L2_CTRL_TYPE_MENU){
             struct  v4l2_querymenu menu={0};

@@ -7,9 +7,21 @@
 
 void* stream_thread(void* arg) {
     struct StreamState *state = (struct StreamState *)arg;
+    //local variables to read when mutex locked
+    int l_is_streaming=1,l_snap=0;
     gst_element_set_state(state->g_data->pipeline, GST_STATE_PLAYING);
-    while (state->is_streaming) {
-        //TODO add MUTEX
+    
+    while (l_is_streaming) {
+        pthread_mutex_lock(&state->lock);
+        l_is_streaming=state->is_streaming;
+        l_snap=state->snap;
+        state->snap=0;
+        pthread_mutex_unlock(&state->lock);
+
+        if(l_is_streaming==0){
+            break;
+        }
+        
         //v4l2 parts   
         int bytes_deq;
         int index = dequeue_buff(state->fd, &bytes_deq);
@@ -19,7 +31,8 @@ void* stream_thread(void* arg) {
             continue;
         }
         
-        if(state->snap){
+        if(l_snap){
+            // l_snap=0;
             char filename[256]={0};
             char extension[8]={0};
             time_t now = time(NULL);
@@ -34,7 +47,6 @@ void* stream_thread(void* arg) {
             sprintf(filename, "%s_%s.%s", state->info->fmt_name,time,extension);
             int file = open(filename, O_RDWR | O_CREAT, 0666);
             write(file, state->buff[index], bytes_deq);
-            state->snap=0;
             close(file);
         }
 

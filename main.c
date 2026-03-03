@@ -36,6 +36,7 @@ int main(int argc,char * argv[]){
     struct StreamState state;
     
     gst_init(&argc, &argv);
+    pthread_mutex_init(&state.lock, NULL);
 
     while(1){
         query_capablities(fd);  
@@ -163,7 +164,9 @@ int main(int argc,char * argv[]){
                     }
                 }
             case 4:
+                pthread_mutex_lock(&state.lock);
                 state.is_streaming=0;
+                pthread_mutex_unlock(&state.lock);
                 pthread_join(g_pipeline,NULL);
                 stop_streaming(fd);     
                 for (int i =0; i < 8; i++) {
@@ -171,6 +174,7 @@ int main(int argc,char * argv[]){
                 }
                 req_buff(fd, 0);
                 gstream_deinit(&data);
+                pthread_mutex_destroy(&state.lock);
                 printf("You can now press 0 to quit the application\n");
                 break;
 
@@ -180,7 +184,9 @@ int main(int argc,char * argv[]){
                     printf("Please start the stream first.\n");
                     continue;
                 }
+                pthread_mutex_lock(&state.lock);
                 state.snap=1;
+                pthread_mutex_unlock(&state.lock);
                 break;
             case 0:
                 if(state.is_streaming){

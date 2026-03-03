@@ -1,7 +1,15 @@
-camera_stream: main.c v4l2.c gstream.c thread.c
-	gcc main.c v4l2.c gstream.c thread.c -o main.o -pthread `pkg-config --cflags --libs gstreamer-1.0 gstreamer-app-1.0`
-	./main.o
-compile:
-	gcc main.c v4l2.c gstream.c thread.c -o main.o -pthread `pkg-config --cflags --libs gstreamer-1.0 gstreamer-app-1.0`
+CC=gcc
+SRCS=main.c v4l2.c gstream.c thread.c
+OBJS=$(SRCS:.c=.o)
+CFLAGS += `pkg-config --cflags gstreamer-1.0 gstreamer-app-1.0`
+LDFLAGS += -pthread `pkg-config --libs gstreamer-1.0 gstreamer-app-1.0`
+TARGET=camera_stream
+$(TARGET): $(OBJS)
+	$(CC) $^ $(LDFLAGS) -o $(TARGET)
+
+%.o: %.c
+	$(CC) $< $(CFLAGS) -c -o $@
+
+.PHONY: clean
 clean:
-	rm -f camera_stream
+	rm -f $(OBJS) $(TARGET)

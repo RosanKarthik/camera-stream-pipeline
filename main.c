@@ -17,6 +17,10 @@
 int main(int argc,char * argv[]){
     unsigned char *buff[8];
     int fd = open("/dev/video0", O_RDWR);
+    if(fd==-1){
+        printf("Unable to connect to device.\nExiting....");
+        return -1;
+    }
     int buff_size;
     int index;
     int num_buffs;
@@ -201,4 +205,5 @@ int main(int argc,char * argv[]){
                 continue;
         }
     }
+    return 0;
 }

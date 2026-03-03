@@ -352,6 +352,25 @@ int stop_streaming(int fd){
     return 0;
 }
 
+/*
+func name: openDev()
+args:
+    NULL
+desc:  
+    this function intializes the file descriptor and returns the fd
+returns:
+    -1 on fail
+    fd on success
+*/
+int openDev(){
+    int fd = open("/dev/video0", O_RDWR);
+    if(fd==-1){
+        printf("Unable to connect to device.\nExiting....");
+        return -1;
+    }
+    return fd;
+}
+
 // int snap(int fd){
 //     unsigned char *buff[3];
     

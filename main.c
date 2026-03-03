@@ -14,13 +14,29 @@
 #include "v4l2.h"
 #include "thread.h"
 
-int main(int argc,char * argv[]){
-    unsigned char *buff[8];
-    int fd = open("/dev/video0", O_RDWR);
-    if(fd==-1){
-        printf("Unable to connect to device.\nExiting....");
+/*
+func name: validate_input
+args:
+    int * input: pointer to store the validated input to
+desc:  
+    this function gets an input and validates if it is only integers
+returns:
+    0 on success
+    -1 on fail
+*/
+int validate_inp(int * input){
+    if (scanf("%d", input) != 1) {
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF) { }
+        printf("Invalid input! Please enter a number.\n");
         return -1;
     }
+    return 0;
+}
+
+int main(int argc,char * argv[]){
+    unsigned char *buff[8];
+    int fd= openDev();
     int buff_size;
     int index;
     int num_buffs;
@@ -48,7 +64,7 @@ int main(int argc,char * argv[]){
         printf("[1]Start Streaming\t[2]Query Controls\t[3]Get/Set Controls\n[4]Stop Streaming\t[5]Take a Snap\t\t[0]Quit\n");
         printf("-----------------------------------------------------------------------------\n");
         printf("Choice: ");
-        scanf("%d",&input);
+        if(validate_inp(&input)==-1) continue;
         printf("-----------------------------------------------------------------------------\n");
         switch(input){
             case 1:
@@ -68,7 +84,7 @@ int main(int argc,char * argv[]){
                 printf("[-1]Exit\n");
                 printf("-----------------------------------------------------------------------------\n");
                 printf("Input:");
-                scanf("%d",&input);
+                if(validate_inp(&input)==-1) continue;
                 printf("-----------------------------------------------------------------------------\n");
                 if(input==-1) return 0; 
 
@@ -86,7 +102,7 @@ int main(int argc,char * argv[]){
                 printf("[-1]Exit\n");
                 printf("-----------------------------------------------------------------------------\n");
                 printf("Input:");
-                scanf("%d",&input);
+                if(validate_inp(&input)==-1) continue;
                 printf("-----------------------------------------------------------------------------\n");
                 if(input==-1) return 0;
 
@@ -116,11 +132,13 @@ int main(int argc,char * argv[]){
                     printf("Gstream setup success\n");
                 }
         
+                pthread_mutex_lock(&state.lock);
                 state.is_streaming=1;
                 state.fd=fd;
                 state.g_data=&data;
                 state.buff=buff;
                 state.info=&info;
+                pthread_mutex_unlock(&state.lock);
 
                 pthread_create(&g_pipeline,NULL,stream_thread,&state);
 
@@ -137,16 +155,16 @@ int main(int argc,char * argv[]){
                     continue;
                 }
                 printf("Do you want to set or the current value of a control?:\n[0]Set [1]Get: ");
-                scanf("%d",&input);
+                if(validate_inp(&input)==-1) continue;;
                 //set
                 if(!input){
                     printf("[0]Exit\nEnter the control number to change:\nInput:");
-                    scanf("%d",&input);
+                    if(validate_inp(&input)==-1) continue;;
                     if(input){
                         ctrl_id=ctrls[input].id;
                         get_ctrl(fd,ctrl_id);
                         printf("Enter the value to set: ");
-                        scanf("%d",&ctrl_val);
+                        if(validate_inp(&ctrl_val)==-1) continue;;
                         set_ctrl(fd,ctrl_id,ctrl_val);
                         break;
                     }
@@ -157,7 +175,7 @@ int main(int argc,char * argv[]){
                 //get
                 else{
                     printf("[0]Exit\nEnter the control number to get:\nInput:");
-                    scanf("%d",&input);
+                    if(validate_inp(&input)==-1) continue;;
                     if(input){
                         uint32_t ctrl_id=ctrls[input].id;
                         get_ctrl(fd,ctrl_id);
@@ -168,6 +186,11 @@ int main(int argc,char * argv[]){
                     }
                 }
             case 4:
+                if(!state.is_streaming)
+                {
+                    printf("Please start the stream first.\n");
+                    continue;
+                }
                 pthread_mutex_lock(&state.lock);
                 state.is_streaming=0;
                 pthread_mutex_unlock(&state.lock);
@@ -178,7 +201,6 @@ int main(int argc,char * argv[]){
                 }
                 req_buff(fd, 0);
                 gstream_deinit(&data);
-                pthread_mutex_destroy(&state.lock);
                 printf("You can now press 0 to quit the application\n");
                 break;
 
@@ -197,6 +219,7 @@ int main(int argc,char * argv[]){
                     printf("Turn off streaming before quiting.\n");
                     continue;
                 }
+                pthread_mutex_destroy(&state.lock);
                 close(fd);
                 return 0;
             default:

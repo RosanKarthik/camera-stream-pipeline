@@ -23,7 +23,6 @@ struct img_res{
 struct img_ctrl{
     uint32_t id;
     char name[64];
-    uint8_t is_init;
 };
 
 void query_capablities(int fd);

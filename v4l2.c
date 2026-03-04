@@ -1,4 +1,4 @@
-//program to capture a picture from the webcam according to the users parameters/formats
+//program containing the functions to query,set,get, stream and capture a picture from the webcam according to the users parameters/formats
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -169,7 +169,7 @@ returns:
 int set_ctrl(int fd,uint32_t ctrl_id,int32_t val){
     struct v4l2_control vctrls; 
     vctrls.id=ctrl_id;
-    printf("[debug]fmt_id:%d\n",vctrls.id);
+    printf("[debug]fmt_id: %d\n",vctrls.id);
     vctrls.value=val;
     if(ioctl(fd,VIDIOC_S_CTRL,&vctrls)==-1){
         printf("[v4l2]Eror setting controls\n");
@@ -193,7 +193,7 @@ returns:
 int get_ctrl(int fd,uint32_t ctrl_id){
     struct v4l2_control vctrls;
     vctrls.id=ctrl_id;
-    printf("%d\n",vctrls.id);
+    printf("[debug]fmt_id: %d\n",vctrls.id);
     if(ioctl(fd,VIDIOC_G_CTRL,&vctrls)==-1){
         printf("[v4l2]Error getting control val\n");
         return -1;

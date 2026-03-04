@@ -1,3 +1,5 @@
+//program to run the snap/stream
+
 #include <stdio.h>
 #include "thread.h"
 #include <time.h>

@@ -1,3 +1,4 @@
+//this program runs the main loop of the streaming app
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,7 +16,7 @@
 #include "thread.h"
 
 /*
-func name: validate_input
+func name: validate_inp
 args:
     int * input: pointer to store the validated input to
 desc:  
@@ -136,6 +137,7 @@ int main(int argc,char * argv[]){
                     continue;
                 }
         
+                //set current stream state to struct
                 pthread_mutex_lock(&state.lock);
                 state.is_streaming=1;
                 state.fd=fd;
@@ -144,6 +146,7 @@ int main(int argc,char * argv[]){
                 state.info=&info;
                 pthread_mutex_unlock(&state.lock);
 
+                //create a parallel thread to process streaming
                 pthread_create(&g_pipeline,NULL,stream_thread,&state);
 
                 break;
@@ -155,20 +158,24 @@ int main(int argc,char * argv[]){
                 break;
             case 3:
                 if(ctrl_count==0){
-                    printf("Please query controls first.\n");
-                    continue;
+                    printf("[debug]Controls have not been listed before. Listing commands....\n");
+                    ctrl_count=enum_cntrl(fd,ctrls);
+                    printf("-----------------------------------------------------------------------------\n");
                 }
                 printf("Do you want to set or the current value of a control?:\n[0]Set [1]Get: ");
                 if(validate_inp(&input)==-1) continue;;
+                printf("-----------------------------------------------------------------------------\n");
                 //set
                 if(!input){
-                    printf("[0]Exit\nEnter the control number to change:\nInput:");
-                    if(validate_inp(&input)==-1) continue;;
+                    printf("[0]Exit\nEnter the control number to change:");
+                    if(validate_inp(&input)==-1) continue;
+                    printf("-----------------------------------------------------------------------------\n");
                     if(input){
                         ctrl_id=ctrls[input].id;
                         get_ctrl(fd,ctrl_id);
                         printf("Enter the value to set: ");
                         if(validate_inp(&ctrl_val)==-1) continue;;
+                        printf("-----------------------------------------------------------------------------\n");
                         set_ctrl(fd,ctrl_id,ctrl_val);
                         break;
                     }
@@ -178,7 +185,7 @@ int main(int argc,char * argv[]){
                 }
                 //get
                 else{
-                    printf("[0]Exit\nEnter the control number to get:\nInput:");
+                    printf("[0]Exit\nEnter the control number to get:");
                     if(validate_inp(&input)==-1) continue;;
                     if(input){
                         uint32_t ctrl_id=ctrls[input].id;

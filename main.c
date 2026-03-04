@@ -50,6 +50,7 @@ int main(int argc,char * argv[]){
     int fmt_count=0;
     int32_t ctrl_val;
     uint32_t ctrl_id;
+    int selected_ctrl=0;
 
     struct StreamInfo info;
     struct pix_formats available[16]={0};
@@ -65,7 +66,7 @@ int main(int argc,char * argv[]){
     while(1){
         query_capablities(fd);  
         printf("-----------------------------------------------------------------------------\n");
-        printf("[1]Start Streaming\t[2]Query Controls\t[3]Get/Set Controls\n[4]Stop Streaming\t[5]Take a Snap\t\t[0]Quit\n");
+        printf("[1]Start Streaming\t[2]Controls\n[3]Stop Streaming\t[4]Take a Snap\n[0]Quit\n");
         printf("-----------------------------------------------------------------------------\n");
         printf("Choice: ");
         if(validate_inp(&input)==-1) continue;
@@ -150,53 +151,72 @@ int main(int argc,char * argv[]){
                 pthread_create(&g_pipeline,NULL,stream_thread,&state);
 
                 break;
+
             case 2:
                 ctrl_count=enum_cntrl(fd,ctrls);
-                if(ctrl_count==0){
-                    printf("No available controls\n");
+                while(1){
+                    printf("Controls are:\n");
+                    for(int i=0;i<ctrl_count;i++){
+                        fprintf(stdout,"[%d]%s\n",i,ctrls[i].name);
+                    }
+                    printf("[0]Back\n");
+                    printf("Choose the control you wish to view: ");
+                    int selected_ctrl;
+                    if(validate_inp(&selected_ctrl)==-1){continue;}
+                    if(selected_ctrl==0){break;}
+                    printf("-----------------------------------------------------------------------------\n");  
+                    
+                    if(ctrls[selected_ctrl].flags&V4L2_CTRL_FLAG_DISABLED){
+                        printf("[Warning]Control flag disabled for %s.\n",ctrls[selected_ctrl].name);
+                        sleep(1);
+                        continue;
+                    }
+                    if(ctrls[selected_ctrl].flags&V4L2_CTRL_FLAG_READ_ONLY){
+                        printf("[WARNING]Control is read only and cannot be modified.\n");
+                        sleep(1);
+                        continue;
+                    } 
+                    printf("%s\n",ctrls[selected_ctrl].name);
+                    if(ctrls[selected_ctrl].type==V4L2_CTRL_TYPE_MENU){
+                        struct  v4l2_querymenu menu={0};
+                        menu.id=ctrls[selected_ctrl].id;
+                        for(int i=ctrls[selected_ctrl].min;i<=ctrls[selected_ctrl].max;i++){
+                            menu.index=i;
+                            if(ioctl(fd,VIDIOC_QUERYMENU,&menu)!=-1){
+                                printf("\t[MenuItem] [%d]: %s\n", menu.index, menu.name);
+                            }
+                        }
+                    }
+                    else{
+                        printf("\tMin:%d Max:%d Step:%d Def:%d\n",ctrls[selected_ctrl].min,ctrls[selected_ctrl].max,ctrls[selected_ctrl].step,ctrls[selected_ctrl].def);
+                    }
+                    printf("-----------------------------------------------------------------------------\n");
+                    while(1){
+                        printf("Do you want to set or the current value of the selected control?:\n[1]Set [2]Get [0]Back: ");
+                        if(validate_inp(&input)==-1) continue;
+                        printf("-----------------------------------------------------------------------------\n");
+                        //set
+                        if(input==0){
+                            break;
+                        }
+                        else if(input==1){
+                            ctrl_id=ctrls[selected_ctrl].id;
+                            get_ctrl(fd,ctrl_id);
+                            printf("Enter the value to set: ");
+                            if(validate_inp(&ctrl_val)==-1) continue;;
+                            printf("-----------------------------------------------------------------------------\n");
+                            set_ctrl(fd,ctrl_id,ctrl_val);
+                        }
+                        //get
+                        else if(input==2){
+                            uint32_t ctrl_id=ctrls[selected_ctrl].id;
+                            get_ctrl(fd,ctrl_id);
+                        }
+                    }
                 }
                 break;
+
             case 3:
-                if(ctrl_count==0){
-                    printf("[debug]Controls have not been listed before. Listing commands....\n");
-                    ctrl_count=enum_cntrl(fd,ctrls);
-                    printf("-----------------------------------------------------------------------------\n");
-                }
-                printf("Do you want to set or the current value of a control?:\n[0]Set [1]Get: ");
-                if(validate_inp(&input)==-1) continue;;
-                printf("-----------------------------------------------------------------------------\n");
-                //set
-                if(!input){
-                    printf("[0]Exit\nEnter the control number to change:");
-                    if(validate_inp(&input)==-1) continue;
-                    printf("-----------------------------------------------------------------------------\n");
-                    if(input){
-                        ctrl_id=ctrls[input].id;
-                        get_ctrl(fd,ctrl_id);
-                        printf("Enter the value to set: ");
-                        if(validate_inp(&ctrl_val)==-1) continue;;
-                        printf("-----------------------------------------------------------------------------\n");
-                        set_ctrl(fd,ctrl_id,ctrl_val);
-                        break;
-                    }
-                    else{
-                        break;
-                    }
-                }
-                //get
-                else{
-                    printf("[0]Exit\nEnter the control number to get:");
-                    if(validate_inp(&input)==-1) continue;;
-                    if(input){
-                        uint32_t ctrl_id=ctrls[input].id;
-                        get_ctrl(fd,ctrl_id);
-                        break;
-                    }
-                    else{
-                        break;
-                    }
-                }
-            case 4:
                 if(!state.is_streaming)
                 {
                     printf("Please start the stream first.\n");
@@ -215,7 +235,7 @@ int main(int argc,char * argv[]){
                 printf("You can now press 0 to quit the application\n");
                 break;
 
-            case 5:
+            case 4:
                 if(!state.is_streaming)
                 {
                     printf("Please start the stream first.\n");
@@ -225,6 +245,7 @@ int main(int argc,char * argv[]){
                 state.snap=1;
                 pthread_mutex_unlock(&state.lock);
                 break;
+
             case 0:
                 if(state.is_streaming){
                     printf("Turn off streaming before quiting.\n");

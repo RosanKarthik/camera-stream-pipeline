@@ -23,6 +23,12 @@ struct img_res{
 struct img_ctrl{
     uint32_t id;
     char name[64];
+    int min;
+    int max;
+    int step;
+    int def;
+    int type;
+    int flags;
 };
 
 void query_capablities(int fd);

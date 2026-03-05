@@ -123,15 +123,17 @@ int enum_cntrl(int fd,struct img_ctrl * available){
     printf("Available controls:\n");
     printf("-----------------------------------------------------------------------------\n");
     while(ioctl(fd,VIDIOC_QUERYCTRL,&ctrl)!=-1){
-        // if(ctrl.flags&V4L2_CTRL_FLAG_DISABLED){
-        //     printf("[v4l2]Control flag disabled for %s. Skipping..\n",ctrl.name);
-        //     ctrl.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
-        //     // count++;
-        //     continue;
-        // }
-        // if(ctrl.flags&V4L2_CTRL_FLAG_READ_ONLY){
-        //     printf("[WARNING]Control [%d] is read only and cannot be modified.\n",count);
-        // } 
+        if(ctrl.flags&V4L2_CTRL_FLAG_DISABLED){
+            printf("[v4l2]Control flag disabled for %s. Skipping..\n",ctrl.name);
+            ctrl.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
+            // count++;
+            continue;
+        }
+        if(ctrl.flags&V4L2_CTRL_FLAG_READ_ONLY){
+            printf("[WARNING]Control [%d] is read only and cannot be modified.\n",count);
+            ctrl.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
+            continue;
+        } 
         // printf("[%d]%s\n",count,ctrl.name);
         // if(ctrl.type==V4L2_CTRL_TYPE_MENU){
         //     struct  v4l2_querymenu menu={0};

@@ -66,7 +66,7 @@ int main(int argc,char * argv[]){
     while(1){
         query_capablities(fd);  
         printf("-----------------------------------------------------------------------------\n");
-        printf("[1]Start Streaming\t[2]Controls\n[3]Stop Streaming\t[4]Take a Snap\n[0]Quit\n");
+        printf("[1]Start Streaming\t[2]Controls\n[3]Stop Streaming\t[4]Take a Snap\n[-1]Quit\n");
         printf("-----------------------------------------------------------------------------\n");
         printf("Choice: ");
         if(validate_inp(&input)==-1) continue;
@@ -159,11 +159,11 @@ int main(int argc,char * argv[]){
                     for(int i=0;i<ctrl_count;i++){
                         fprintf(stdout,"[%d]%s\n",i,ctrls[i].name);
                     }
-                    printf("[0]Back\n");
+                    printf("[-1]Back\n");
                     printf("Choose the control you wish to view: ");
                     int selected_ctrl;
                     if(validate_inp(&selected_ctrl)==-1){continue;}
-                    if(selected_ctrl==0){break;}
+                    if(selected_ctrl==-1){break;}
                     printf("-----------------------------------------------------------------------------\n");  
                     
                     if(ctrls[selected_ctrl].flags&V4L2_CTRL_FLAG_DISABLED){
@@ -192,11 +192,11 @@ int main(int argc,char * argv[]){
                     }
                     printf("-----------------------------------------------------------------------------\n");
                     while(1){
-                        printf("Do you want to set or get the current value of %s?:\n[1]Set [2]Get [0]Back: ",ctrls[selected_ctrl].name);
+                        printf("Do you want to set or get the current value of %s?:\n[1]Set [2]Get [-1]Back: ",ctrls[selected_ctrl].name);
                         if(validate_inp(&input)==-1) continue;
                         printf("-----------------------------------------------------------------------------\n");
                         //set
-                        if(input==0){
+                        if(input==-1){
                             break;
                         }
                         else if(input==1){
@@ -235,7 +235,7 @@ int main(int argc,char * argv[]){
                 }
                 gstream_deinit(&data);
                 req_buff(fd, 0);
-                printf("You can now press 0 to quit the application\n");
+                printf("You can now press -1 to quit the application\n");
                 break;
 
             case 4:
@@ -249,7 +249,7 @@ int main(int argc,char * argv[]){
                 pthread_mutex_unlock(&state.lock);
                 break;
 
-            case 0:
+            case -1:
                 if(state.is_streaming){
                     printf("Turn off streaming before quiting.\n");
                     continue;

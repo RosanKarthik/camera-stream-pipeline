@@ -192,7 +192,7 @@ int main(int argc,char * argv[]){
                     }
                     printf("-----------------------------------------------------------------------------\n");
                     while(1){
-                        printf("Do you want to set or the current value of the selected control?:\n[1]Set [2]Get [0]Back: ");
+                        printf("Do you want to set or get the current value of %s?:\n[1]Set [2]Get [0]Back: ",ctrls[selected_ctrl].name);
                         if(validate_inp(&input)==-1) continue;
                         printf("-----------------------------------------------------------------------------\n");
                         //set
@@ -202,15 +202,18 @@ int main(int argc,char * argv[]){
                         else if(input==1){
                             ctrl_id=ctrls[selected_ctrl].id;
                             get_ctrl(fd,ctrl_id);
-                            printf("Enter the value to set: ");
+                            printf("-----------------------------------------------------------------------------\n");
+                            printf("Enter the value to set : ");
                             if(validate_inp(&ctrl_val)==-1) continue;;
                             printf("-----------------------------------------------------------------------------\n");
                             set_ctrl(fd,ctrl_id,ctrl_val);
+                            printf("-----------------------------------------------------------------------------\n");
                         }
                         //get
                         else if(input==2){
                             uint32_t ctrl_id=ctrls[selected_ctrl].id;
                             get_ctrl(fd,ctrl_id);
+                            printf("-----------------------------------------------------------------------------\n");
                         }
                     }
                 }

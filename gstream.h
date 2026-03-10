@@ -5,6 +5,7 @@
 #include "gst/app/gstappsrc.h"
 #include "v4l2.h"
 
+//contains the various elements from both v4l2 and gstreamer needed to run the stream
 struct CustomData{
     GstElement *appsrc, *sink, *pipeline,*conv,*jpegdec;
     GstCaps *caps;

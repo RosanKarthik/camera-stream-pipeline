@@ -30,6 +30,7 @@ int validate_inp(int * input){
         int c;
         while ((c = getchar()) != '\n' && c != EOF) { }
         printf("Invalid input! Please enter a number.\n");
+        sleep(1);
         return -1;
     }
     return 0;
@@ -40,8 +41,8 @@ int main(int argc,char * argv[]){
     if(fd==-1){
         return 0;
     }
-    unsigned char *buff[8];
-    int buff_size;
+    unsigned char *buff[8]; 
+    int buff_size[8];
     int index;
     int num_buffs;
     int input;
@@ -123,13 +124,15 @@ int main(int argc,char * argv[]){
                 }
 
                 for(int i=0;i<8;i++){
-                    buff_size=query_buff(fd,i,&buff[i]);
-                    printf("[debug]Bytes allocated for buff %d : %d\n",i,buff_size);
+                    buff_size[i]=query_buff(fd,i,&buff[i]);
+                    printf("[debug]Bytes allocated for buff %d : %d\n",i,buff_size[i]);
                     queue_buff(fd,i);
                 }
 
                 //v4l2 start streaming
-                start_streaming(fd);
+                if(start_streaming(fd)==-1){
+                    continue;
+                }
 
                 //gstream pipeline start
 
@@ -229,9 +232,12 @@ int main(int argc,char * argv[]){
                 state.is_streaming=0;
                 pthread_mutex_unlock(&state.lock);
                 pthread_join(g_pipeline,NULL);
-                stop_streaming(fd);     
+                if(stop_streaming(fd)){
+                    continue;
+                }
+                printf("Cleaning up.....\n");     
                 for (int i =0; i < 8; i++) {
-                    munmap(buff[i], buff_size);
+                    munmap(buff[i], buff_size[i]);
                 }
                 gstream_deinit(&data);
                 req_buff(fd, 0);
@@ -244,7 +250,7 @@ int main(int argc,char * argv[]){
                     printf("Please start the stream first.\n");
                     continue;
                 }
-                pthread_mutex_lock(&state.lock);
+                pthread_mutex_lock(&state.lock);    
                 state.snap=1;
                 pthread_mutex_unlock(&state.lock);
                 break;
@@ -255,7 +261,9 @@ int main(int argc,char * argv[]){
                     continue;
                 }
                 pthread_mutex_destroy(&state.lock);
-                close(fd);
+                if(close(fd)==-1){
+                    printf("Error closing file descriptor!");
+                };
                 return 0;
             default:
                 printf("Enter valid input!\n");

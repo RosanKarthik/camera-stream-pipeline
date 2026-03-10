@@ -19,13 +19,15 @@ args:
 desc:  
     this function checks if out needed formats/modes are supported by the driver
 returns:
-    NULL
+    0 on success
+    -1 on error
 */
 
-void query_capablities(int fd){
+int query_capablities(int fd){
     struct v4l2_capability vcap;
     if (-1 == ioctl(fd, VIDIOC_QUERYCAP, &vcap)) {
 		printf("[v4l2]Query capabilites\n");
+        return -1;
 	}
 
 	// if (!(vcap.capabilities & V4L2_CAP_READWRITE)) {
@@ -34,12 +36,14 @@ void query_capablities(int fd){
 
 	if (!(vcap.capabilities & V4L2_CAP_STREAMING)) {
 		printf("[v4l2]Device does not support streaming i/o\n");
-	}
+        return -1;
+    }
 
     if(!(vcap.capabilities & V4L2_CAP_VIDEO_CAPTURE)){
         printf("[v4l2]Not Compatible\n");
+        return -1;
     }
-    return;
+    return 0;
 }
 
 /*
@@ -221,9 +225,10 @@ args:
 desc:  
     this function sets the parameters/modes to use when running the camera to the driver
 returns:
-    NULL
+    0 on success
+    -1 on error
 */
-void set_formats(int fd,int width,int height,int pixformat){
+int set_formats(int fd,int width,int height,int pixformat){
     struct v4l2_format vformat={0};
     vformat.type=V4L2_BUF_TYPE_VIDEO_CAPTURE;
     vformat.fmt.pix.width=width;
@@ -234,8 +239,9 @@ void set_formats(int fd,int width,int height,int pixformat){
     if(res==-1)
     {
         printf("[v4l2]Error setting formats\n");
+        return -1;
     }
-    return;
+    return 0;
 }
 
 /*
@@ -255,6 +261,7 @@ int req_buff(int fd,int count){
     req.memory=V4L2_MEMORY_MMAP;
     if(ioctl(fd,VIDIOC_REQBUFS,&req)==-1){
         printf("[v4l2]Error requesting buffer\n");
+        return -1;
     }
     return req.count;
 }
@@ -269,6 +276,7 @@ desc:
     this function queries the buffers and then allocates them
 returns:
     length of the buffer allocated
+    -1 on error
 */
 int query_buff(int fd,int index,unsigned char ** buffer){
     struct v4l2_buffer buff={0};
@@ -277,6 +285,7 @@ int query_buff(int fd,int index,unsigned char ** buffer){
     buff.index=index;
     if(ioctl(fd,VIDIOC_QUERYBUF,&buff)==-1){
         printf("[v4l2]Error querying buffer\n");
+        return -1;
     }
     *buffer= (uint8_t *)mmap(NULL,buff.length,PROT_READ|PROT_WRITE,MAP_SHARED,fd,buff.m.offset);
     return buff.length;
@@ -291,6 +300,7 @@ desc:
     this function queues a buffer to input data from the camera
 returns:
     no of bytes of the buffer used
+    -1 on error
 */
 int queue_buff(int fd,int index){
     struct v4l2_buffer buff = {0};
@@ -300,6 +310,7 @@ int queue_buff(int fd,int index){
 
 	if (ioctl(fd, VIDIOC_QBUF, &buff) == -1) {
 		printf("[v4l2]Error Queueing Buffer\n");
+        return -1;
 	}
     return buff.bytesused;
 }
@@ -312,6 +323,7 @@ desc:
     this function dequeues a buffer to output data 
 returns:
     index of the buffer
+    -1 on error
 */
 int dequeue_buff(int fd,int * bytes_deq){
     struct v4l2_buffer buff = {0};
@@ -334,12 +346,14 @@ args:
 desc:  
     this function starts the video stream
 returns:
-    0
+    0 on success
+    -1 on error
 */
 int start_streaming(int fd){
     unsigned int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     if(ioctl(fd,VIDIOC_STREAMON,&type)==-1){
         printf("[v4l2]Error starting stream\n");
+        return -1;
     }
     return 0;
 }
@@ -351,12 +365,14 @@ args:
 desc:  
     this function stops the video stream
 returns:
-    0
+    0 on success
+    -1 on error
 */
 int stop_streaming(int fd){
     unsigned int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     if(ioctl(fd,VIDIOC_STREAMOFF,&type)==-1){
         printf("Error stopping stream\n");
+        return -1;
     }
     return 0;
 }

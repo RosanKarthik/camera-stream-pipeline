@@ -81,6 +81,7 @@ int gstream_setup(struct CustomData * data,struct StreamInfo * info){
                 "height", G_TYPE_INT, info->height,
                 "framerate", GST_TYPE_FRACTION, 30, 1,
                 NULL);
+            // strcpy(name,"mjepg.jpg");
             break;
         case V4L2_PIX_FMT_YUYV:
             data->pipeline = gst_pipeline_new("v4l2-appsrc-pipeline");
@@ -102,6 +103,7 @@ int gstream_setup(struct CustomData * data,struct StreamInfo * info){
                 "height", G_TYPE_INT, info->height,
                 "framerate", GST_TYPE_FRACTION, 10, 1,
                 NULL);
+            // strcpy(name,"yuv.yuv");
             break;
         default:
             printf("[Gstream]Invalid Format ID \n");

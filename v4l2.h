@@ -31,7 +31,7 @@ struct img_ctrl{
     int flags;
 };
 
-int query_capablities(int fd);
+void query_capablities(int fd);
 
 int enum_formats(int fd, struct pix_formats *available);
 
@@ -43,7 +43,7 @@ int get_ctrl(int fd, uint32_t ctrl_id);
 
 int set_ctrl(int fd, uint32_t ctrl_id,int32_t val);
 
-int set_formats(int fd, int width, int height, int pixformat);
+void set_formats(int fd, int width, int height, int pixformat);
 
 int req_buff(int fd, int count);
 

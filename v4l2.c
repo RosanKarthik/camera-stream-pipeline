@@ -13,6 +13,26 @@
 #include "v4l2.h"
 
 /*
+func name: validate_inp
+args:
+    int * input: pointer to store the validated input to
+desc:  
+    this function gets an input and validates if it is only integers
+returns:
+    0 on success
+    -1 on fail
+*/
+int validate_inp(int * input){
+    if (scanf("%d", input) != 1) {
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF) { }
+        printf("Invalid input! Please enter a number.\n");
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}
+
+/*
 func name:  query_capablities
 args:
     int fd: file descriptor to the camera driver
@@ -45,7 +65,7 @@ void query_capablities(int fd){
 /*
 func name:  enum_formats
 args:
-    int fd: file descriptor     to the camera driver
+    int fd: file descriptor to the camera driver
     struct pix_formats: structure to store all the formats names and ids supported 
 desc:  
     this function lists all the formats available and stores the names,ids to the struct passed
@@ -256,6 +276,7 @@ int req_buff(int fd,int count){
     req.memory=V4L2_MEMORY_MMAP;
     if(ioctl(fd,VIDIOC_REQBUFS,&req)==-1){
         printf("[v4l2]Error requesting buffer\n");
+        return EXIT_FAILURE;
     }
     return req.count;
 }
@@ -278,6 +299,7 @@ int query_buff(int fd,int index,unsigned char ** buffer){
     buff.index=index;
     if(ioctl(fd,VIDIOC_QUERYBUF,&buff)==-1){
         printf("[v4l2]Error querying buffer\n");
+        return EXIT_FAILURE;
     }
     *buffer= (uint8_t *)mmap(NULL,buff.length,PROT_READ|PROT_WRITE,MAP_SHARED,fd,buff.m.offset);
     return buff.length;
@@ -301,6 +323,7 @@ int queue_buff(int fd,int index){
 
 	if (ioctl(fd, VIDIOC_QBUF, &buff) == -1) {
 		printf("[v4l2]Error Queueing Buffer\n");
+        return EXIT_FAILURE;
 	}
     return buff.bytesused;
 }
@@ -341,6 +364,7 @@ int start_streaming(int fd){
     unsigned int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     if(ioctl(fd,VIDIOC_STREAMON,&type)==-1){
         printf("[v4l2]Error starting stream\n");
+        return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
 }
@@ -352,12 +376,14 @@ args:
 desc:  
     this function stops the video stream
 returns:
-    0
+    0 on success 
+    -1 on fail
 */
 int stop_streaming(int fd){
     unsigned int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     if(ioctl(fd,VIDIOC_STREAMOFF,&type)==-1){
         printf("Error stopping stream\n");
+        return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
 }
@@ -379,4 +405,97 @@ int openDev(){
         return EXIT_FAILURE;
     }
     return fd;
+}
+/*
+func name: ctrl_handler
+args:
+    int fd: file descriptor to the camera driver
+desc:  
+    presents a menu that lists the avaiable controls whose values can be set/get
+returns:
+    -1 on failure
+*/
+int ctrl_handler(int fd) {
+    struct img_ctrl ctrls[20] = {0};
+    int ctrl_count = enum_cntrl(fd, ctrls);
+    int input;
+    int selected_ctrl;
+    int32_t ctrl_val;
+    uint32_t ctrl_id;
+
+    if (ctrl_count == 0) {
+        printf("No valid controls found.\n");
+        sleep(1);
+        return EXIT_FAILURE;
+    }
+
+    while (1) {
+        printf("Controls are:\n");
+        for (int i = 0; i < ctrl_count; i++) {
+            fprintf(stdout, "[%d]%s\n", i, ctrls[i].name);
+        }
+        printf("[-1]Back\n");
+        printf("Choose the control you wish to view: ");
+        
+        if (validate_inp(&selected_ctrl) == EXIT_FAILURE) { continue; }
+        if (selected_ctrl == -1) { return 0; }
+        
+        if (selected_ctrl < 0 || selected_ctrl >= ctrl_count) {
+            printf("Invalid selection.\n");
+            continue;
+        }
+
+        printf("-----------------------------------------------------------------------------\n");  
+        
+        if (ctrls[selected_ctrl].flags & V4L2_CTRL_FLAG_DISABLED) {
+            printf("[Warning]Control flag disabled for %s.\n", ctrls[selected_ctrl].name);
+            sleep(1);
+            continue;
+        }
+        if (ctrls[selected_ctrl].flags & V4L2_CTRL_FLAG_READ_ONLY) {
+            printf("[WARNING]Control is read only and cannot be modified.\n");
+            sleep(1);
+            continue;
+        } 
+        
+        printf("%s\n", ctrls[selected_ctrl].name);
+        if (ctrls[selected_ctrl].type == V4L2_CTRL_TYPE_MENU) {
+            struct v4l2_querymenu menu = {0};
+            menu.id = ctrls[selected_ctrl].id;
+            for (int i = ctrls[selected_ctrl].min; i <= ctrls[selected_ctrl].max; i++) {
+                menu.index = i;
+                if (ioctl(fd, VIDIOC_QUERYMENU, &menu) != -1) {
+                    printf("\t[MenuItem] [%d]: %s\n", menu.index, menu.name);
+                }
+            }
+        } else {
+            printf("\tMin:%d Max:%d Step:%d Def:%d\n", ctrls[selected_ctrl].min, ctrls[selected_ctrl].max, ctrls[selected_ctrl].step, ctrls[selected_ctrl].def);
+        }
+        printf("-----------------------------------------------------------------------------\n");
+        
+        while (1) {
+            printf("Do you want to set or get the current value of %s?:\n[1]Set [2]Get [-1]Back: ", ctrls[selected_ctrl].name);
+            if (validate_inp(&input) == EXIT_FAILURE) continue;
+            printf("-----------------------------------------------------------------------------\n");
+            //set
+            if (input == -1) {
+                break;
+            } else if (input == 1) {
+                ctrl_id = ctrls[selected_ctrl].id;
+                get_ctrl(fd, ctrl_id);
+                printf("-----------------------------------------------------------------------------\n");
+                printf("Enter the value to set : ");
+                if (validate_inp(&ctrl_val) == EXIT_FAILURE) continue;
+                printf("-----------------------------------------------------------------------------\n");
+                set_ctrl(fd, ctrl_id, ctrl_val);
+                printf("-----------------------------------------------------------------------------\n");
+            }
+            //get
+            else if (input == 2) {
+                uint32_t ctrl_id = ctrls[selected_ctrl].id;
+                get_ctrl(fd, ctrl_id);
+                printf("-----------------------------------------------------------------------------\n");
+            }
+        }
+    }
 }

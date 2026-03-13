@@ -42,26 +42,25 @@ void* stream_thread(void* arg) {
             struct tm *t = localtime(&now);
             char time[100];
 
-            strftime(time, sizeof(time), "%d-%m-%Y %H:%M:%S", t); 
+            strftime(time, sizeof(time), "%d-%m-%Y_%H-%M-%S", t); 
 
             if(state->info->fmt_id==V4L2_PIX_FMT_YUYV) strcpy(extension,"yuv");
             else if(state->info->fmt_id==V4L2_PIX_FMT_MJPEG) strcpy(extension,"jpg");
 
             sprintf(filename, "%s_%s.%s", state->info->fmt_name,time,extension);
-            int file = open(filename, O_RDWR | O_CREAT, 0666);
-            write(file, state->buff[index], bytes_deq);
-            close(file);
+            FILE *file = fopen(filename, "wb");
+            if (file != NULL) {
+                fwrite(state->buff[index], 1, bytes_deq, file);
+                fclose(file);
+            } else {
+                printf("[Error] Failed to save snapshot");
+            }
         }
 
         // printf("Frame %d pushed, size = %d bytes\n", frame_count, bytes_deq);
         state->g_data->g_buff= gst_buffer_new_allocate(NULL, bytes_deq, NULL);
 
         gst_buffer_fill(state->g_data->g_buff, 0, state->buff[index], bytes_deq);
-
-        // GST_BUFFER_PTS(gst_bufx`) =
-        //     gst_util_uint64_scale(frame_count, GST_SECOND, 10);
-        // GST_BUFFER_DURATION(gst_buf) =
-        //     gst_util_uint64_scale(1, GST_SECOND, 10);
 
         GstFlowReturn ret = gst_app_src_push_buffer(GST_APP_SRC(state->g_data->appsrc), state->g_data->g_buff);
 

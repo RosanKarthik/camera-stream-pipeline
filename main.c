@@ -15,25 +15,8 @@
 #include "v4l2.h"
 #include "thread.h"
 
-/*
-func name: validate_inp
-args:
-    int * input: pointer to store the validated input to
-desc:  
-    this function gets an input and validates if it is only integers
-returns:
-    0 on success
-    -1 on fail
-*/
-int validate_inp(int * input){
-    if (scanf("%d", input) != 1) {
-        int c;
-        while ((c = getchar()) != '\n' && c != EOF) { }
-        printf("Invalid input! Please enter a number.\n");
-        return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
-}
+#define MAX_NUM_FMTS 16
+#define MAX_NUM_RES 16
 
 int main(int argc,char * argv[]){
     int fd= openDev();
@@ -45,20 +28,15 @@ int main(int argc,char * argv[]){
     int index;
     int num_buffs;
     int input;
-    int ctrl_count=0;
     int res_count=0;
     int fmt_count=0;
-    int32_t ctrl_val;
-    uint32_t ctrl_id;
-    int selected_ctrl=0;
 
     struct StreamInfo info;
-    struct pix_formats available[16]={0};
-    struct img_res res[16]={0};
-    struct img_ctrl ctrls[20]={0};
+    struct pix_formats available[MAX_NUM_FMTS]={0};
+    struct img_res res[MAX_NUM_RES]={0};
     struct CustomData data={0};
     pthread_t g_pipeline;
-    struct StreamState state;
+    struct StreamState state={0};
     
     gst_init(&argc, &argv);
     pthread_mutex_init(&state.lock, NULL);
@@ -93,14 +71,19 @@ int main(int argc,char * argv[]){
                 printf("-----------------------------------------------------------------------------\n");
                 if(input==-1) continue; 
 
+                if(input < 0 || input >= fmt_count) {
+                    printf("Invalid format selection.\n");
+                    continue;
+                }
+
                 info.fmt_id=available[input].id;
-                strncpy(info.fmt_name,available[input].format,16);
+                strncpy(info.fmt_name,available[input].format,FMT_NAME_LEN);
 
                 //resolution query
                 res_count= enum_resolution(fd,res,info.fmt_id);
                 if(res_count==0 || res_count == EXIT_FAILURE) {
                     sleep(1);
-                    return EXIT_FAILURE;
+                    break;
                 }
 
                 //resolution choice
@@ -111,19 +94,24 @@ int main(int argc,char * argv[]){
                 printf("-----------------------------------------------------------------------------\n");
                 if(input==-1) continue;;
 
+                if(input < 0 || input >= res_count) {
+                    printf("Invalid resolution selection.\n");
+                    continue;
+                }
+
                 info.height=res[input].height;
                 info.width=res[input].width;
 
-                if(set_formats(fd,info.width,info.height,info.fmt_id)){
+                if(set_formats(fd,info.width,info.height,info.fmt_id)==-1){
                     sleep(1);
-                    continue;
+                    break;
                 }
 
                 //request v4l2 to allocate n buffs
                 num_buffs=req_buff(fd,NUM_BUFFS);
 
                 if(num_buffs<NUM_BUFFS){
-                    printf("[debug]Buffers allocated lesser than requested : %d\n",num_buffs);
+                    printf("[alert]Buffers allocated lesser than requested : %d\n",num_buffs);
                 }
 
                 for(int i=0;i<NUM_BUFFS;i++){
@@ -138,12 +126,24 @@ int main(int argc,char * argv[]){
                 }
 
                 //v4l2 start streaming
-                start_streaming(fd);
+                if(start_streaming(fd)==-1){
+                    printf("Error starting stream.Try again.\n");
+                    for (int i = 0; i < NUM_BUFFS; i++) {
+                        munmap(buff[i], buff_size[i]);
+                    }
+                    req_buff(fd, 0);
+                    continue;
+                }
 
                 //gstream pipeline start
 
                 if(gstream_setup(&data,&info)==EXIT_FAILURE){
-                    printf("Gstream pipeline setup failed\n");
+                    printf("Gstream pipeline setup failed.Try again.\n");
+                    stop_streaming(fd);
+                    for (int i = 0; i < NUM_BUFFS; i++) {
+                        munmap(buff[i], buff_size[i]);
+                    }
+                    req_buff(fd, 0);
                     continue;
                 }
         
@@ -162,74 +162,8 @@ int main(int argc,char * argv[]){
                 break;
 
             case 2:
-                ctrl_count=enum_cntrl(fd,ctrls);
-                if(ctrl_count==0){
-                    printf("No valid controls found.\n");
-                    sleep(1);
+                if(ctrl_handler(fd)==-1){
                     continue;
-                }
-                while(1){
-                    printf("Controls are:\n");
-                    for(int i=0;i<ctrl_count;i++){
-                        fprintf(stdout,"[%d]%s\n",i,ctrls[i].name);
-                    }
-                    printf("[-1]Back\n");
-                    printf("Choose the control you wish to view: ");
-                    int selected_ctrl;
-                    if(validate_inp(&selected_ctrl)==EXIT_FAILURE){continue;}
-                    if(selected_ctrl==-1){break;}
-                    printf("-----------------------------------------------------------------------------\n");  
-                    
-                    if(ctrls[selected_ctrl].flags&V4L2_CTRL_FLAG_DISABLED){
-                        printf("[Warning]Control flag disabled for %s.\n",ctrls[selected_ctrl].name);
-                        sleep(1);
-                        continue;
-                    }
-                    if(ctrls[selected_ctrl].flags&V4L2_CTRL_FLAG_READ_ONLY){
-                        printf("[WARNING]Control is read only and cannot be modified.\n");
-                        sleep(1);
-                        continue;
-                    } 
-                    printf("%s\n",ctrls[selected_ctrl].name);
-                    if(ctrls[selected_ctrl].type==V4L2_CTRL_TYPE_MENU){
-                        struct  v4l2_querymenu menu={0};
-                        menu.id=ctrls[selected_ctrl].id;
-                        for(int i=ctrls[selected_ctrl].min;i<=ctrls[selected_ctrl].max;i++){
-                            menu.index=i;
-                            if(ioctl(fd,VIDIOC_QUERYMENU,&menu)!=-1){
-                                printf("\t[MenuItem] [%d]: %s\n", menu.index, menu.name);
-                            }
-                        }
-                    }
-                    else{
-                        printf("\tMin:%d Max:%d Step:%d Def:%d\n",ctrls[selected_ctrl].min,ctrls[selected_ctrl].max,ctrls[selected_ctrl].step,ctrls[selected_ctrl].def);
-                    }
-                    printf("-----------------------------------------------------------------------------\n");
-                    while(1){
-                        printf("Do you want to set or get the current value of %s?:\n[1]Set [2]Get [-1]Back: ",ctrls[selected_ctrl].name);
-                        if(validate_inp(&input)==EXIT_FAILURE) continue;
-                        printf("-----------------------------------------------------------------------------\n");
-                        //set
-                        if(input==-1){
-                            break;
-                        }
-                        else if(input==1){
-                            ctrl_id=ctrls[selected_ctrl].id;
-                            get_ctrl(fd,ctrl_id);
-                            printf("-----------------------------------------------------------------------------\n");
-                            printf("Enter the value to set : ");
-                            if(validate_inp(&ctrl_val)==EXIT_FAILURE) continue;
-                            printf("-----------------------------------------------------------------------------\n");
-                            set_ctrl(fd,ctrl_id,ctrl_val);
-                            printf("-----------------------------------------------------------------------------\n");
-                        }
-                        //get
-                        else if(input==2){
-                            uint32_t ctrl_id=ctrls[selected_ctrl].id;
-                            get_ctrl(fd,ctrl_id);
-                            printf("-----------------------------------------------------------------------------\n");
-                        }
-                    }
                 }
                 break;
 
@@ -239,6 +173,7 @@ int main(int argc,char * argv[]){
                     printf("Please start the stream first.\n");
                     continue;
                 }
+                
                 pthread_mutex_lock(&state.lock);
                 state.is_streaming=0;
                 pthread_mutex_unlock(&state.lock);
@@ -280,5 +215,6 @@ int main(int argc,char * argv[]){
                 continue;
         }
     }
+    //breaks out of the loop in case of early exit.
     return EXIT_SUCCESS;
 }

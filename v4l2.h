@@ -4,16 +4,17 @@
 #include <stdint.h>
 
 #define NUM_BUFFS 8
-
+#define FMT_NAME_LEN 32
+#define CTRL_NAME_LEN 64
 struct StreamInfo{
-    char fmt_name[16];
+    char fmt_name[FMT_NAME_LEN];
     int fmt_id;
     int height;
     int width;
 };
 
 struct pix_formats{
-    uint8_t format[32];
+    uint8_t format[FMT_NAME_LEN];
     uint32_t id;
 };
 
@@ -24,7 +25,7 @@ struct img_res{
 
 struct img_ctrl{
     uint32_t id;
-    char name[64];
+    char name[CTRL_NAME_LEN];
     int min;
     int max;
     int step;
@@ -32,6 +33,8 @@ struct img_ctrl{
     int type;
     int flags;
 };
+
+int validate_inp(int * input);
 
 void query_capablities(int fd);
 
@@ -60,5 +63,7 @@ int start_streaming(int fd);
 int stop_streaming(int fd);
 
 int openDev();
+
+int ctrl_handler(int fd);
 
 #endif

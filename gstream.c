@@ -9,6 +9,7 @@
 // #include "v4l2.h"
 
 /*
+_*un-used older function*_
 func name:  gstream_init
 args:
     struct CustomData: struct containing the pipeline elements 
@@ -26,9 +27,9 @@ int gstream_init(struct CustomData * data){
 
     if (!data->pipeline || !data->appsrc || !data->conv || !data->sink) {
         g_printerr("[Gstream]Failed to create GStreamer elements\n");
-        return -1;
+        return EXIT_FAILURE;
     }
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 /*
@@ -45,7 +46,7 @@ int gstream_deinit(struct CustomData * data){
     gst_app_src_end_of_stream(GST_APP_SRC(data->appsrc));
     gst_element_set_state(data->pipeline, GST_STATE_NULL);
     gst_object_unref(data->pipeline);
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 /*
@@ -70,7 +71,7 @@ int gstream_setup(struct CustomData * data,struct StreamInfo * info){
 
             if (!data->pipeline || !data->appsrc || !data->jpegdec || !data->conv || !data->sink) {
                 g_printerr("[Gstream]Failed to create GStreamer elements\n");
-                return -1;
+                return EXIT_FAILURE;
             }
 
             gst_bin_add_many(GST_BIN(data->pipeline), data->appsrc, data->jpegdec, data->conv, data->sink, NULL);
@@ -91,7 +92,7 @@ int gstream_setup(struct CustomData * data,struct StreamInfo * info){
 
             if (!data->pipeline || !data->appsrc || !data->conv || !data->sink) {
                 g_printerr("[Gstream]Failed to create GStreamer elements\n");
-                return -1;
+                return EXIT_FAILURE;
             }
 
             gst_bin_add_many(GST_BIN(data->pipeline), data->appsrc, data->conv, data->sink, NULL);
@@ -117,5 +118,5 @@ int gstream_setup(struct CustomData * data,struct StreamInfo * info){
         "do-timestamp", TRUE,
         NULL);
     gst_caps_unref(data->caps);
-    return 0;
+    return EXIT_SUCCESS;
 }

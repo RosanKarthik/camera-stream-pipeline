@@ -27,6 +27,7 @@ void* stream_thread(void* arg) {
         //v4l2 parts   
         int bytes_deq;
         int index = dequeue_buff(state->fd, &bytes_deq);
+        //printf("[debug]DQ Buff idx:%d\n",index);
         if(index==-1){
             //debug print
             printf("[Thread]v4l2 buffer not allocated...Skipping...\n");
@@ -73,7 +74,7 @@ void* stream_thread(void* arg) {
 
         //v4l2 parts
         queue_buff(state->fd, index);
-
+        //printf("[debug]DQ Buff idx:%d\n",index);
     }
     gst_element_set_state(state->g_data->pipeline, GST_STATE_NULL);
     printf("\n[Thread] Streaming stopped.\n");

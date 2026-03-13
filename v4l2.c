@@ -66,7 +66,7 @@ int enum_formats(int fd,struct pix_formats * available){
     }
     if(fmt.index==0) {
         printf("[v4l2]Error querying formats\n");
-        return -1;
+        return EXIT_FAILURE;
     }    
     return fmt.index;
 }
@@ -101,7 +101,7 @@ int enum_resolution(int fd,struct img_res * res, int format){
     }
     if(frame.index==0) {
         printf("[v4l2]Error querying resolutions\n");
-        return -1;
+        return EXIT_FAILURE;
     }    
     return frame.index;
 }
@@ -181,10 +181,10 @@ int set_ctrl(int fd,uint32_t ctrl_id,int32_t val){
     vctrls.value=val;
     if(ioctl(fd,VIDIOC_S_CTRL,&vctrls)==-1){
         printf("[v4l2]Eror setting controls\n");
-        return -1;
+        return EXIT_FAILURE;
     }
     printf("Successfully set cntrl to %d \n",vctrls.value);
-    return 0;
+    return EXIT_SUCCESS;
 }   
 
 /*
@@ -204,7 +204,7 @@ int get_ctrl(int fd,uint32_t ctrl_id){
     printf("[debug]fmt_id: %d\n",vctrls.id);
     if(ioctl(fd,VIDIOC_G_CTRL,&vctrls)==-1){
         printf("[v4l2]Error getting control val\n");
-        return -1;
+        return EXIT_FAILURE;
     }
     printf("The value of the selected control is : %d\n",vctrls.value);
     return vctrls.value;
@@ -223,7 +223,7 @@ desc:
 returns:
     NULL
 */
-void set_formats(int fd,int width,int height,int pixformat){
+int set_formats(int fd,int width,int height,int pixformat){
     struct v4l2_format vformat={0};
     vformat.type=V4L2_BUF_TYPE_VIDEO_CAPTURE;
     vformat.fmt.pix.width=width;
@@ -234,8 +234,9 @@ void set_formats(int fd,int width,int height,int pixformat){
     if(res==-1)
     {
         printf("[v4l2]Error setting formats\n");
+        return EXIT_FAILURE;
     }
-    return;
+    return EXIT_SUCCESS;
 }
 
 /*
@@ -321,7 +322,7 @@ int dequeue_buff(int fd,int * bytes_deq){
 
 	if (ioctl(fd, VIDIOC_DQBUF, &buff) == -1) {
 		printf("[v4l2]Error DeQueueing Buffer\n");
-        return -1;
+        return EXIT_FAILURE;
 	}
     *bytes_deq=buff.bytesused;
     return buff.index;
@@ -341,7 +342,7 @@ int start_streaming(int fd){
     if(ioctl(fd,VIDIOC_STREAMON,&type)==-1){
         printf("[v4l2]Error starting stream\n");
     }
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 /*
@@ -358,7 +359,7 @@ int stop_streaming(int fd){
     if(ioctl(fd,VIDIOC_STREAMOFF,&type)==-1){
         printf("Error stopping stream\n");
     }
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 /*
@@ -373,9 +374,9 @@ returns:
 */
 int openDev(){
     int fd = open("/dev/video0", O_RDWR);
-    if(fd==-1){
+    if(fd==EXIT_FAILURE){
         printf("Unable to connect to device.\nExiting....");
-        return -1;
+        return EXIT_FAILURE;
     }
     return fd;
 }

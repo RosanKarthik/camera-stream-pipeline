@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define NUM_BUFFS 8
+
 struct StreamInfo{
     char fmt_name[16];
     int fmt_id;
@@ -43,7 +45,7 @@ int get_ctrl(int fd, uint32_t ctrl_id);
 
 int set_ctrl(int fd, uint32_t ctrl_id,int32_t val);
 
-void set_formats(int fd, int width, int height, int pixformat);
+int set_formats(int fd, int width, int height, int pixformat);
 
 int req_buff(int fd, int count);
 

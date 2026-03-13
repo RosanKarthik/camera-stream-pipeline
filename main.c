@@ -30,18 +30,18 @@ int validate_inp(int * input){
         int c;
         while ((c = getchar()) != '\n' && c != EOF) { }
         printf("Invalid input! Please enter a number.\n");
-        return -1;
+        return EXIT_FAILURE;
     }
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 int main(int argc,char * argv[]){
     int fd= openDev();
     if(fd==-1){
-        return 0;
+        return EXIT_FAILURE;
     }
-    unsigned char *buff[8];
-    int buff_size;
+    unsigned char *buff[NUM_BUFFS];
+    int buff_size[NUM_BUFFS];
     int index;
     int num_buffs;
     int input;
@@ -69,7 +69,7 @@ int main(int argc,char * argv[]){
         printf("[1]Start Streaming\t[2]Controls\n[3]Stop Streaming\t[4]Take a Snap\n[-1]Quit\n");
         printf("-----------------------------------------------------------------------------\n");
         printf("Choice: ");
-        if(validate_inp(&input)==-1) continue;
+        if(validate_inp(&input)==EXIT_FAILURE) continue;
         printf("-----------------------------------------------------------------------------\n");
         switch(input){
             case 1:
@@ -81,50 +81,59 @@ int main(int argc,char * argv[]){
                 
                 fmt_count=enum_formats(fd,available);
                 if(fmt_count==0) {
-                    printf("No valid format detected. Exiting...\n");
-                    return 0;
+                    printf("No valid format detected.Device unable to stream\n");
+                    break;
                 }
 
                 //format choice
                 printf("[-1]Exit\n");
                 printf("-----------------------------------------------------------------------------\n");
                 printf("Input:");
-                if(validate_inp(&input)==-1) continue;
+                if(validate_inp(&input)==EXIT_FAILURE) continue;
                 printf("-----------------------------------------------------------------------------\n");
-                if(input==-1) return 0; 
+                if(input==-1) continue; 
 
                 info.fmt_id=available[input].id;
                 strncpy(info.fmt_name,available[input].format,16);
 
                 //resolution query
                 res_count= enum_resolution(fd,res,info.fmt_id);
-                if(res_count==0) {
-                    printf("No valid resolution detected. Exiting...\n");
-                    return 0;
+                if(res_count==0 || res_count == EXIT_FAILURE) {
+                    sleep(1);
+                    return EXIT_FAILURE;
                 }
 
                 //resolution choice
                 printf("[-1]Exit\n");
                 printf("-----------------------------------------------------------------------------\n");
                 printf("Input:");
-                if(validate_inp(&input)==-1) continue;
+                if(validate_inp(&input)==EXIT_FAILURE) continue;
                 printf("-----------------------------------------------------------------------------\n");
-                if(input==-1) return 0;
+                if(input==-1) continue;;
 
                 info.height=res[input].height;
                 info.width=res[input].width;
 
-                set_formats(fd,info.width,info.height,info.fmt_id);
+                if(set_formats(fd,info.width,info.height,info.fmt_id)){
+                    sleep(1);
+                    continue;
+                }
 
-                num_buffs=req_buff(fd,8);
+                //request v4l2 to allocate n buffs
+                num_buffs=req_buff(fd,NUM_BUFFS);
 
-                if(num_buffs<8){
+                if(num_buffs<NUM_BUFFS){
                     printf("[debug]Buffers allocated lesser than requested : %d\n",num_buffs);
                 }
 
-                for(int i=0;i<8;i++){
-                    buff_size=query_buff(fd,i,&buff[i]);
-                    printf("[debug]Bytes allocated for buff %d : %d\n",i,buff_size);
+                for(int i=0;i<NUM_BUFFS;i++){
+                    buff_size[i]=query_buff(fd,i,&buff[i]);
+                    if(buff_size[i]==0){
+                        printf("[debug]Memory not allocated for buffer %d!\n",i);
+                    }
+                    else {
+                        printf("[debug]Bytes allocated for buff %d : %d\n",i,buff_size[i]);
+                    }
                     queue_buff(fd,i);
                 }
 
@@ -133,7 +142,7 @@ int main(int argc,char * argv[]){
 
                 //gstream pipeline start
 
-                if(gstream_setup(&data,&info)==-1){
+                if(gstream_setup(&data,&info)==EXIT_FAILURE){
                     printf("Gstream pipeline setup failed\n");
                     continue;
                 }
@@ -154,6 +163,11 @@ int main(int argc,char * argv[]){
 
             case 2:
                 ctrl_count=enum_cntrl(fd,ctrls);
+                if(ctrl_count==0){
+                    printf("No valid controls found.\n");
+                    sleep(1);
+                    continue;
+                }
                 while(1){
                     printf("Controls are:\n");
                     for(int i=0;i<ctrl_count;i++){
@@ -162,7 +176,7 @@ int main(int argc,char * argv[]){
                     printf("[-1]Back\n");
                     printf("Choose the control you wish to view: ");
                     int selected_ctrl;
-                    if(validate_inp(&selected_ctrl)==-1){continue;}
+                    if(validate_inp(&selected_ctrl)==EXIT_FAILURE){continue;}
                     if(selected_ctrl==-1){break;}
                     printf("-----------------------------------------------------------------------------\n");  
                     
@@ -193,7 +207,7 @@ int main(int argc,char * argv[]){
                     printf("-----------------------------------------------------------------------------\n");
                     while(1){
                         printf("Do you want to set or get the current value of %s?:\n[1]Set [2]Get [-1]Back: ",ctrls[selected_ctrl].name);
-                        if(validate_inp(&input)==-1) continue;
+                        if(validate_inp(&input)==EXIT_FAILURE) continue;
                         printf("-----------------------------------------------------------------------------\n");
                         //set
                         if(input==-1){
@@ -204,7 +218,7 @@ int main(int argc,char * argv[]){
                             get_ctrl(fd,ctrl_id);
                             printf("-----------------------------------------------------------------------------\n");
                             printf("Enter the value to set : ");
-                            if(validate_inp(&ctrl_val)==-1) continue;;
+                            if(validate_inp(&ctrl_val)==EXIT_FAILURE) continue;
                             printf("-----------------------------------------------------------------------------\n");
                             set_ctrl(fd,ctrl_id,ctrl_val);
                             printf("-----------------------------------------------------------------------------\n");
@@ -228,12 +242,15 @@ int main(int argc,char * argv[]){
                 pthread_mutex_lock(&state.lock);
                 state.is_streaming=0;
                 pthread_mutex_unlock(&state.lock);
+
+                //wait for the thread to join after exc current iteration 
                 pthread_join(g_pipeline,NULL);
                 stop_streaming(fd);     
-                for (int i =0; i < 8; i++) {
-                    munmap(buff[i], buff_size);
+                for (int i =0; i < NUM_BUFFS; i++) {
+                    munmap(buff[i], buff_size[i]);
                 }
                 gstream_deinit(&data);
+                //Requesting 0 buffs flushes the buff memory internally
                 req_buff(fd, 0);
                 printf("You can now press -1 to quit the application\n");
                 break;
@@ -256,12 +273,12 @@ int main(int argc,char * argv[]){
                 }
                 pthread_mutex_destroy(&state.lock);
                 close(fd);
-                return 0;
+                return EXIT_SUCCESS;
             default:
                 printf("Enter valid input!\n");
                 sleep(1);
                 continue;
         }
     }
-    return 0;
+    return EXIT_SUCCESS;
 }

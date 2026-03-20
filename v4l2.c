@@ -146,7 +146,6 @@ int enum_cntrl(int fd,struct img_ctrl * available){
         if(ctrl.flags&V4L2_CTRL_FLAG_DISABLED){
             printf("[v4l2]Control flag disabled for %s. Skipping..\n",ctrl.name);
             ctrl.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
-            // count++;
             continue;
         }
         if(ctrl.flags&V4L2_CTRL_FLAG_READ_ONLY){
@@ -154,20 +153,6 @@ int enum_cntrl(int fd,struct img_ctrl * available){
             ctrl.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
             continue;
         } 
-        // printf("[%d]%s\n",count,ctrl.name);
-        // if(ctrl.type==V4L2_CTRL_TYPE_MENU){
-        //     struct  v4l2_querymenu menu={0};
-        //     menu.id=ctrl.id;
-        //     for(int i=ctrl.minimum;i<=ctrl.maximum;i++){
-        //         menu.index=i;
-        //         if(ioctl(fd,VIDIOC_QUERYMENU,&menu)!=-1){
-        //             printf("\t[MenuItem] [%d]: %s\n", menu.index, menu.name);
-        //         }
-        //     }
-        // }
-        // else{
-        //     printf("\tMin:%d Max:%d Step:%d Def:%d\n",ctrl.minimum,ctrl.maximum,ctrl.step,ctrl.default_value);
-        // }
         available[count].id=ctrl.id;
         strncpy(available[count].name,(char *)ctrl.name,sizeof(ctrl.name));
         available[count].max=ctrl.maximum;

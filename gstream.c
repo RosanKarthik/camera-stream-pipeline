@@ -9,30 +9,6 @@
 // #include "v4l2.h"
 
 /*
-_*un-used older function*_
-func name:  gstream_init
-args:
-    struct CustomData: struct containing the pipeline elements 
-desc:  
-    this function initializes the elements in the struct and creates the pipeline
-returns:
-    0 on success 
-    -1 on error
-*/
-int gstream_init(struct CustomData * data){
-    data->pipeline = gst_pipeline_new("v4l2-appsrc-pipeline");
-    data->appsrc = gst_element_factory_make("appsrc", "src");
-    data->conv = gst_element_factory_make("videoconvert", "conv");
-    data->sink = gst_element_factory_make("fpsdisplaysink", "sink");
-
-    if (!data->pipeline || !data->appsrc || !data->conv || !data->sink) {
-        g_printerr("[Gstream]Failed to create GStreamer elements\n");
-        return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
-}
-
-/*
 func name:  gstream_deinit
 args:
     struct CustomData: struct containing the pipeline elements 
@@ -44,8 +20,12 @@ returns:
 */
 int gstream_deinit(struct CustomData * data){
     gst_app_src_end_of_stream(GST_APP_SRC(data->appsrc));
-    gst_element_set_state(data->pipeline, GST_STATE_NULL);
+    GstStateChangeReturn ret = gst_element_set_state(data->pipeline, GST_STATE_NULL);
+    if (ret == GST_STATE_CHANGE_FAILURE) {
+        g_printerr("[Gstream] Failed to stop pipeline\n");
+    }
     gst_object_unref(data->pipeline);
+    data->pipeline = NULL;
     return EXIT_SUCCESS;
 }
 
@@ -61,6 +41,7 @@ returns:
     -1 on error
 */
 int gstream_setup(struct CustomData * data,struct StreamInfo * info){
+    gboolean ret = FALSE;
     switch(info->fmt_id){
         case V4L2_PIX_FMT_MJPEG:
             data->pipeline = gst_pipeline_new("mjpeg-appsrc-pipeline");
@@ -75,7 +56,11 @@ int gstream_setup(struct CustomData * data,struct StreamInfo * info){
             }
 
             gst_bin_add_many(GST_BIN(data->pipeline), data->appsrc, data->jpegdec, data->conv, data->sink, NULL);
-            gst_element_link_many(data->appsrc,data->jpegdec, data->conv, data->sink, NULL);            
+            ret=gst_element_link_many(data->appsrc,data->jpegdec, data->conv, data->sink, NULL);            
+            if(!ret){
+                g_printerr("[Gstream] Failed to link MJPEG pipeline\n");
+                return EXIT_FAILURE;
+            }
             data->caps = gst_caps_new_simple(
                 "image/jpeg",
                 "width", G_TYPE_INT, info->width,
@@ -96,7 +81,11 @@ int gstream_setup(struct CustomData * data,struct StreamInfo * info){
             }
 
             gst_bin_add_many(GST_BIN(data->pipeline), data->appsrc, data->conv, data->sink, NULL);
-            gst_element_link_many(data->appsrc, data->conv, data->sink, NULL);
+            ret=gst_element_link_many(data->appsrc, data->conv, data->sink, NULL);
+            if(!ret){
+                g_printerr("[Gstream] Failed to link MJPEG pipeline\n");
+                return EXIT_FAILURE;
+            }
             data->caps = gst_caps_new_simple(
                 "video/x-raw",
                 "format", G_TYPE_STRING, "YUY2",

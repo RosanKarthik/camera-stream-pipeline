@@ -1,6 +1,5 @@
 //this program runs the main loop of the streaming app
 #include <stdio.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -40,9 +39,9 @@ int main(int argc,char * argv[]){
     
     gst_init(&argc, &argv);
     pthread_mutex_init(&state.lock, NULL);
-
+    query_capablities(fd); 
+    
     while(1){
-        query_capablities(fd);  
         printf("-----------------------------------------------------------------------------\n");
         printf("[1]Start Streaming\t[2]Controls\n[3]Stop Streaming\t[4]Take a Snap\n[-1]Quit\n");
         printf("-----------------------------------------------------------------------------\n");
@@ -51,12 +50,12 @@ int main(int argc,char * argv[]){
         printf("-----------------------------------------------------------------------------\n");
         switch(input){
             case 1:
-                //format query
+
                 if(state.is_streaming){
                     printf("Stream is already on...\nPlease turn off if you want to change formats/resolution.\n");
                     continue;
                 }
-                
+                //format query
                 fmt_count=enum_formats(fd,available);
                 if(fmt_count==0) {
                     printf("No valid format detected.Device unable to stream\n");
@@ -114,7 +113,7 @@ int main(int argc,char * argv[]){
                     printf("[alert]Buffers allocated lesser than requested : %d\n",num_buffs);
                 }
 
-                for(int i=0;i<NUM_BUFFS;i++){
+                for(int i=0;i<num_buffs;i++){
                     buff_size[i]=query_buff(fd,i,&buff[i]);
                     if(buff_size[i]==0){
                         printf("[debug]Memory not allocated for buffer %d!\n",i);
@@ -173,7 +172,7 @@ int main(int argc,char * argv[]){
                     printf("Please start the stream first.\n");
                     continue;
                 }
-                
+
                 pthread_mutex_lock(&state.lock);
                 state.is_streaming=0;
                 pthread_mutex_unlock(&state.lock);

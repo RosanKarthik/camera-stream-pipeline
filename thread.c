@@ -11,7 +11,10 @@ void* stream_thread(void* arg) {
     struct StreamState *state = (struct StreamState *)arg;
     //local variables to read when mutex locked
     int l_is_streaming=1,l_snap=0;
-    gst_element_set_state(state->g_data->pipeline, GST_STATE_PLAYING);
+    if (gst_element_set_state(state->g_data->pipeline, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
+        g_printerr("[Thread] Failed to start pipeline\n");
+        return NULL;
+    }
     
     while (l_is_streaming) {
         pthread_mutex_lock(&state->lock);
@@ -57,9 +60,15 @@ void* stream_thread(void* arg) {
             }
         }
 
-        // printf("Frame %d pushed, size = %d bytes\n", frame_count, bytes_deq);
+        // printf("Frame %d pushed, size = %d bytes \n", frame_count, bytes_deq);
         state->g_data->g_buff= gst_buffer_new_allocate(NULL, bytes_deq, NULL);
 
+        if (!state->g_data->g_buff) {
+            fprintf(stderr, "[Thread] GstBuffer alloc failed\n");
+            queue_buff(state->fd, index);
+            continue;
+        }
+        
         gst_buffer_fill(state->g_data->g_buff, 0, state->buff[index], bytes_deq);
 
         GstFlowReturn ret = gst_app_src_push_buffer(GST_APP_SRC(state->g_data->appsrc), state->g_data->g_buff);

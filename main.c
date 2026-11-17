@@ -27,6 +27,7 @@ int main(int argc,char * argv[]){
     int index;
     int num_buffs;
     int input;
+    int ret;
     int res_count=0;
     int fmt_count=0;
 
@@ -156,7 +157,11 @@ int main(int argc,char * argv[]){
                 pthread_mutex_unlock(&state.lock);
 
                 //create a parallel thread to process streaming
-                pthread_create(&g_pipeline,NULL,stream_thread,&state);
+                ret=pthread_create(&g_pipeline,NULL,stream_thread,&state);
+                if (ret!= 0) {
+                    printf("Error creating pthread!\n");
+                    return EXIT_FAILURE;
+                }
 
                 break;
 
@@ -178,8 +183,15 @@ int main(int argc,char * argv[]){
                 pthread_mutex_unlock(&state.lock);
 
                 //wait for the thread to join after exc current iteration 
-                pthread_join(g_pipeline,NULL);
-                stop_streaming(fd);     
+                ret=pthread_join(g_pipeline,NULL);
+                if (ret!= 0) {
+                    printf("Error returning from thread!\n");
+                    return EXIT_FAILURE;
+                }
+
+                if(stop_streaming(fd)){
+                    return EXIT_FAILURE;
+                }
                 for (int i =0; i < NUM_BUFFS; i++) {
                     munmap(buff[i], buff_size[i]);
                 }

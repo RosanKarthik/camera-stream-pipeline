@@ -23,6 +23,9 @@ int gstream_deinit(struct CustomData * data){
     GstStateChangeReturn ret = gst_element_set_state(data->pipeline, GST_STATE_NULL);
     if (ret == GST_STATE_CHANGE_FAILURE) {
         g_printerr("[Gstream] Failed to stop pipeline\n");
+        gst_object_unref(data->pipeline);
+        data->pipeline = NULL;
+        return EXIT_FAILURE;
     }
     gst_object_unref(data->pipeline);
     data->pipeline = NULL;
